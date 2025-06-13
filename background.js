@@ -1,4 +1,7 @@
-// background.js - Manifest V3対応版
+// background.js - Manifest V3対応版（Service Worker対応）
+
+// Service Worker内でのグローバル変数定義
+let MRA_CONSTANTS, MRA_CONFIG, StorageManager, MessageHandler;
 
 // 必要なモジュールを読み込み
 importScripts(
@@ -7,6 +10,12 @@ importScripts(
     "src/background/storage-manager.js",
     "src/background/message-handler.js"
 );
+
+// Service Worker内でグローバル変数を初期化
+MRA_CONSTANTS = self.MRA_CONSTANTS;
+MRA_CONFIG = self.MRA_CONFIG;
+StorageManager = self.StorageManager;
+MessageHandler = self.MessageHandler;
 
 /**
  * メイン背景処理クラス
@@ -66,7 +75,7 @@ class BackgroundService {
             // Content scriptに分析開始を通知
             chrome.tabs
                 .sendMessage(tabId, {
-                    type: window.MRA_CONSTANTS.MESSAGE_TYPES.PAGE_LOADED,
+                    type: MRA_CONSTANTS.MESSAGE_TYPES.PAGE_LOADED,
                     data: { url: tab.url },
                 })
                 .catch((error) => {
@@ -88,8 +97,7 @@ class BackgroundService {
             try {
                 // Content scriptに手動分析を指示
                 await chrome.tabs.sendMessage(tab.id, {
-                    type: window.MRA_CONSTANTS.MESSAGE_TYPES
-                        .MANUAL_ANALYSIS_REQUEST,
+                    type: MRA_CONSTANTS.MESSAGE_TYPES.MANUAL_ANALYSIS_REQUEST,
                 });
             } catch (error) {
                 console.error("Failed to send manual analysis request:", error);

@@ -1,12 +1,13 @@
-// src/background/storage-manager.js
+// src/background/storage-manager.js - Service Worker対応版
 
 /**
  * ストレージ操作を管理するクラス
  */
 class StorageManager {
     constructor() {
-        this.config = window.MRA_CONFIG;
-        this.constants = window.MRA_CONSTANTS;
+        // Service Worker環境でも動作するように修正
+        this.config = self.MRA_CONFIG || globalThis.MRA_CONFIG;
+        this.constants = self.MRA_CONSTANTS || globalThis.MRA_CONSTANTS;
     }
 
     /**
@@ -354,7 +355,12 @@ class StorageManager {
     }
 }
 
-// グローバルスコープに公開
+// Service Worker環境で公開
+if (typeof self !== "undefined") {
+    self.StorageManager = StorageManager;
+}
+
+// ブラウザ環境で公開（後方互換性）
 if (typeof window !== "undefined") {
     window.StorageManager = StorageManager;
 }

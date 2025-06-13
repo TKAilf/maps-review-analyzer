@@ -1,4 +1,4 @@
-// src/shared/config.js
+// src/shared/config.js - Service Worker対応版
 
 /**
  * デフォルト設定値
@@ -333,19 +333,27 @@ const CONFIG_UTILS = {
     },
 };
 
-// グローバルスコープに設定を公開
+// 設定をオブジェクトとしてまとめる
+const MRA_CONFIG = {
+    DEFAULT_SETTINGS,
+    SETTINGS_SCHEMA,
+    URL_PATTERNS,
+    PERFORMANCE_CONFIG,
+    I18N_CONFIG,
+    ANALYSIS_WEIGHTS,
+    FEATURE_FLAGS,
+    API_CONFIG,
+    SECURITY_CONFIG,
+    CONFIG_VALIDATORS,
+    CONFIG_UTILS,
+};
+
+// Service Worker環境で公開
+if (typeof self !== "undefined") {
+    self.MRA_CONFIG = MRA_CONFIG;
+}
+
+// ブラウザ環境で公開（後方互換性）
 if (typeof window !== "undefined") {
-    window.MRA_CONFIG = {
-        DEFAULT_SETTINGS,
-        SETTINGS_SCHEMA,
-        URL_PATTERNS,
-        PERFORMANCE_CONFIG,
-        I18N_CONFIG,
-        ANALYSIS_WEIGHTS,
-        FEATURE_FLAGS,
-        API_CONFIG,
-        SECURITY_CONFIG,
-        CONFIG_VALIDATORS,
-        CONFIG_UTILS,
-    };
+    window.MRA_CONFIG = MRA_CONFIG;
 }

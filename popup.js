@@ -1,4 +1,4 @@
-// popup.js - 修正版
+// popup.js - デバッグ機能強化版
 
 /**
  * ポップアップメインクラス
@@ -9,6 +9,7 @@ class PopupMain {
         this.components = {};
         this.currentSettings = null;
         this.isInitialized = false;
+        this.debugMode = false;
         this.init();
     }
 
@@ -17,7 +18,7 @@ class PopupMain {
      */
     async init() {
         try {
-            console.log("Popup initializing...");
+            this.log("Popup initializing...");
 
             // 共通モジュールの初期化確認
             this.verifyModules();
@@ -35,9 +36,9 @@ class PopupMain {
             await this.loadInitialData();
 
             this.isInitialized = true;
-            console.log("Popup initialized successfully");
+            this.log("Popup initialized successfully");
         } catch (error) {
-            console.error("Failed to initialize popup:", error);
+            this.error("Failed to initialize popup:", error);
             this.showError("初期化に失敗しました: " + error.message);
         }
     }
@@ -57,6 +58,8 @@ class PopupMain {
                 `Required modules not loaded: ${missingModules.join(", ")}`
             );
         }
+
+        this.log("All required modules verified");
     }
 
     /**
@@ -66,6 +69,7 @@ class PopupMain {
         this.controllers.settings = new SettingsController();
         this.controllers.history = new HistoryController();
         this.controllers.ui = new UIController();
+        this.log("Controllers initialized");
     }
 
     /**
@@ -88,6 +92,8 @@ class PopupMain {
         if (historyList) {
             this.components.historyList = new HistoryList(historyList);
         }
+
+        this.log("Components initialized");
     }
 
     /**
@@ -101,18 +107,21 @@ class PopupMain {
 
         if (toggleBtn) {
             toggleBtn.addEventListener("click", () => {
+                this.log("Toggle button clicked");
                 this.toggleExtension();
             });
         }
 
         if (saveBtn) {
             saveBtn.addEventListener("click", () => {
+                this.log("Save button clicked");
                 this.saveSettings();
             });
         }
 
         if (analyzeBtn) {
             analyzeBtn.addEventListener("click", () => {
+                this.log("Analyze button clicked");
                 this.requestManualAnalysis();
             });
         }
@@ -129,6 +138,12 @@ class PopupMain {
             const element = document.getElementById(id);
             if (element) {
                 element.addEventListener("change", () => {
+                    this.log(
+                        `Setting ${id} changed to:`,
+                        element.type === "checkbox"
+                            ? element.checked
+                            : element.value
+                    );
                     this.onSettingChange(
                         id,
                         element.type === "checkbox"
@@ -143,6 +158,8 @@ class PopupMain {
         document.addEventListener("keydown", (event) => {
             this.handleKeyboardShortcuts(event);
         });
+
+        this.log("Event listeners setup completed");
     }
 
     /**
@@ -150,16 +167,21 @@ class PopupMain {
      */
     async loadInitialData() {
         try {
+            this.log("Loading initial data...");
+
             // 設定の読み込み
             this.currentSettings = await this.loadSettings();
+            this.log("Settings loaded:", this.currentSettings);
 
             // 履歴の読み込み
             await this.loadHistory();
 
             // UIの更新
             this.updateUI();
+
+            this.log("Initial data loaded successfully");
         } catch (error) {
-            console.error("Failed to load initial data:", error);
+            this.error("Failed to load initial data:", error);
             this.showError("データの読み込みに失敗しました");
         }
     }
@@ -169,9 +191,13 @@ class PopupMain {
      */
     async loadSettings() {
         try {
+            this.log("Requesting settings from background...");
+
             const response = await chrome.runtime.sendMessage({
                 type: window.MRA_CONSTANTS.MESSAGE_TYPES.GET_SETTINGS,
             });
+
+            this.log("Settings response received:", response);
 
             if (response && response.success) {
                 const settings = response.data;
@@ -182,7 +208,7 @@ class PopupMain {
                 throw new Error(response?.error || "設定の取得に失敗しました");
             }
         } catch (error) {
-            console.error("Failed to load settings:", error);
+            this.error("Failed to load settings:", error);
             // デフォルト設定を使用
             const defaultSettings = window.MRA_CONFIG.DEFAULT_SETTINGS;
             this.updateSettingsUI(defaultSettings);
@@ -195,12 +221,15 @@ class PopupMain {
      * 設定UIを更新
      */
     updateSettingsUI(settings) {
+        this.log("Updating settings UI with:", settings);
+
         const settingsData = settings.settings || settings;
 
         // 分析モード
         const analysisMode = document.getElementById("analysisMode");
         if (analysisMode) {
             analysisMode.value = settingsData.analysisMode || "standard";
+            this.log("Analysis mode set to:", analysisMode.value);
         }
 
         // 詳細分析表示
@@ -210,12 +239,17 @@ class PopupMain {
         if (showDetailedAnalysis) {
             showDetailedAnalysis.checked =
                 settingsData.showDetailedAnalysis || false;
+            this.log(
+                "Show detailed analysis set to:",
+                showDetailedAnalysis.checked
+            );
         }
 
         // 最小レビュー数
         const minimumReviews = document.getElementById("minimumReviews");
         if (minimumReviews) {
             minimumReviews.value = settingsData.minimumReviewsForAnalysis || 5;
+            this.log("Minimum reviews set to:", minimumReviews.value);
         }
 
         // 疑念閾値
@@ -223,6 +257,7 @@ class PopupMain {
             document.getElementById("suspicionThreshold");
         if (suspicionThreshold) {
             suspicionThreshold.value = settingsData.suspicionThreshold || 40;
+            this.log("Suspicion threshold set to:", suspicionThreshold.value);
         }
     }
 
@@ -231,6 +266,7 @@ class PopupMain {
      */
     updateStatusDisplay(settings) {
         const isEnabled = settings.isEnabled !== false; // デフォルトはtrue
+        this.log("Updating status display. Enabled:", isEnabled);
 
         // ステータスインジケーター
         const statusIndicator = document.getElementById("statusIndicator");
@@ -264,10 +300,14 @@ class PopupMain {
      */
     async loadHistory() {
         try {
+            this.log("Loading history...");
+
             const response = await chrome.runtime.sendMessage({
                 type: window.MRA_CONSTANTS.MESSAGE_TYPES.GET_ANALYSIS_HISTORY,
                 limit: 5,
             });
+
+            this.log("History response:", response);
 
             if (response && response.success) {
                 this.updateHistoryUI(response.data);
@@ -275,7 +315,7 @@ class PopupMain {
                 this.updateHistoryUI([]);
             }
         } catch (error) {
-            console.error("Failed to load history:", error);
+            this.error("Failed to load history:", error);
             this.updateHistoryUI([]);
         }
     }
@@ -284,6 +324,8 @@ class PopupMain {
      * 履歴UIを更新
      */
     updateHistoryUI(history) {
+        this.log("Updating history UI with:", history);
+
         if (this.components.historyList) {
             this.components.historyList.render(history);
         } else {
@@ -344,8 +386,17 @@ class PopupMain {
      */
     async toggleExtension() {
         try {
+            this.log("Toggling extension...");
+
             const currentEnabled = this.currentSettings?.isEnabled !== false;
             const newEnabled = !currentEnabled;
+
+            this.log(
+                "Current enabled:",
+                currentEnabled,
+                "New enabled:",
+                newEnabled
+            );
 
             this.controllers.ui.showLoading(true);
 
@@ -353,6 +404,8 @@ class PopupMain {
                 type: window.MRA_CONSTANTS.MESSAGE_TYPES.SET_STORAGE_DATA,
                 data: { isEnabled: newEnabled },
             });
+
+            this.log("Toggle response:", response);
 
             if (response && response.success) {
                 this.currentSettings = response.data;
@@ -362,11 +415,12 @@ class PopupMain {
                         ? "拡張機能を有効にしました"
                         : "拡張機能を無効にしました"
                 );
+                this.log("Extension toggle successful");
             } else {
                 throw new Error(response?.error || "切り替えに失敗しました");
             }
         } catch (error) {
-            console.error("Failed to toggle extension:", error);
+            this.error("Failed to toggle extension:", error);
             this.showError("切り替えに失敗しました: " + error.message);
         } finally {
             this.controllers.ui.showLoading(false);
@@ -378,23 +432,29 @@ class PopupMain {
      */
     async saveSettings() {
         try {
+            this.log("Saving settings...");
+
             this.controllers.ui.showLoading(true);
 
             const settingsData = this.collectSettingsData();
+            this.log("Collected settings data:", settingsData);
 
             const response = await chrome.runtime.sendMessage({
                 type: window.MRA_CONSTANTS.MESSAGE_TYPES.SET_STORAGE_DATA,
                 data: { settings: settingsData },
             });
 
+            this.log("Save settings response:", response);
+
             if (response && response.success) {
                 this.currentSettings = response.data;
                 this.showSuccess("設定を保存しました");
+                this.log("Settings saved successfully");
             } else {
                 throw new Error(response?.error || "設定の保存に失敗しました");
             }
         } catch (error) {
-            console.error("Failed to save settings:", error);
+            this.error("Failed to save settings:", error);
             this.showError("設定の保存に失敗しました: " + error.message);
         } finally {
             this.controllers.ui.showLoading(false);
@@ -405,7 +465,7 @@ class PopupMain {
      * 設定データを収集
      */
     collectSettingsData() {
-        return {
+        const data = {
             analysisMode:
                 document.getElementById("analysisMode")?.value || "standard",
             showDetailedAnalysis:
@@ -418,6 +478,9 @@ class PopupMain {
                     document.getElementById("suspicionThreshold")?.value
                 ) || 40,
         };
+
+        this.log("Collected settings:", data);
+        return data;
     }
 
     /**
@@ -425,6 +488,8 @@ class PopupMain {
      */
     async requestManualAnalysis() {
         try {
+            this.log("Requesting manual analysis...");
+
             this.controllers.ui.showLoading(true);
 
             // アクティブタブを取得
@@ -432,6 +497,8 @@ class PopupMain {
                 active: true,
                 currentWindow: true,
             });
+
+            this.log("Active tab:", tab);
 
             if (!tab || !tab.url || !tab.url.includes("google.com/maps")) {
                 throw new Error("Google Mapsページで実行してください");
@@ -444,13 +511,14 @@ class PopupMain {
             });
 
             this.showSuccess("分析を開始しました");
+            this.log("Manual analysis request sent successfully");
 
             // 少し待ってから履歴を更新
             setTimeout(() => {
                 this.loadHistory();
             }, 2000);
         } catch (error) {
-            console.error("Manual analysis failed:", error);
+            this.error("Manual analysis failed:", error);
             this.showError("分析の実行に失敗しました: " + error.message);
         } finally {
             this.controllers.ui.showLoading(false);
@@ -461,7 +529,7 @@ class PopupMain {
      * 設定変更時の処理
      */
     onSettingChange(settingId, value) {
-        console.log(`Setting ${settingId} changed to:`, value);
+        this.log(`Setting ${settingId} changed to:`, value);
         // リアルタイムでの設定反映が必要な場合はここで処理
     }
 
@@ -486,6 +554,10 @@ class PopupMain {
         } else if (event.ctrlKey && event.key === "r") {
             event.preventDefault();
             this.requestManualAnalysis();
+        } else if (event.ctrlKey && event.shiftKey && event.key === "D") {
+            // デバッグモード切り替え
+            this.debugMode = !this.debugMode;
+            this.log("Debug mode:", this.debugMode ? "enabled" : "disabled");
         }
     }
 
@@ -521,6 +593,36 @@ class PopupMain {
     }
 
     /**
+     * ログ出力（デバッグ用）
+     */
+    log(...args) {
+        if (this.debugMode) {
+            console.log("[PopupMain]", ...args);
+        }
+    }
+
+    /**
+     * エラーログ出力
+     */
+    error(...args) {
+        console.error("[PopupMain]", ...args);
+    }
+
+    /**
+     * デバッグ情報を取得
+     */
+    getDebugInfo() {
+        return {
+            isInitialized: this.isInitialized,
+            debugMode: this.debugMode,
+            currentSettings: this.currentSettings,
+            controllers: Object.keys(this.controllers),
+            components: Object.keys(this.components),
+            timestamp: new Date().toISOString(),
+        };
+    }
+
+    /**
      * クリーンアップ処理
      */
     destroy() {
@@ -531,6 +633,7 @@ class PopupMain {
             }
         });
         this.isInitialized = false;
+        this.log("PopupMain destroyed");
     }
 }
 
@@ -700,3 +803,18 @@ window.addEventListener("error", (event) => {
 window.addEventListener("unhandledrejection", (event) => {
     console.error("Unhandled promise rejection in popup:", event.reason);
 });
+
+// デバッグ用グローバル関数
+window.getPopupDebugInfo = () => {
+    if (window.popupMain) {
+        return window.popupMain.getDebugInfo();
+    }
+    return { error: "PopupMain not initialized" };
+};
+
+window.enablePopupDebug = () => {
+    if (window.popupMain) {
+        window.popupMain.debugMode = true;
+        console.log("Popup debug mode enabled");
+    }
+};

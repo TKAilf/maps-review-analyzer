@@ -1,4 +1,4 @@
-// src/shared/constants.js
+// src/shared/constants.js - Service Worker対応版
 
 /**
  * メッセージタイプの定数
@@ -174,19 +174,27 @@ const SUCCESS_MESSAGES = {
     EXTENSION_DISABLED: "拡張機能を無効にしました",
 };
 
-// グローバルスコープに定数を公開
+// 定数をオブジェクトとしてまとめる
+const MRA_CONSTANTS = {
+    MESSAGE_TYPES,
+    ANALYSIS_MODES,
+    SEVERITY_LEVELS,
+    PATTERN_TYPES,
+    TRUST_SCORE_THRESHOLDS,
+    SELECTORS,
+    TIME_CONSTANTS,
+    UI_CONSTANTS,
+    ANALYSIS_CONSTANTS,
+    ERROR_MESSAGES,
+    SUCCESS_MESSAGES,
+};
+
+// Service Worker環境で公開
+if (typeof self !== "undefined") {
+    self.MRA_CONSTANTS = MRA_CONSTANTS;
+}
+
+// ブラウザ環境で公開（後方互換性）
 if (typeof window !== "undefined") {
-    window.MRA_CONSTANTS = {
-        MESSAGE_TYPES,
-        ANALYSIS_MODES,
-        SEVERITY_LEVELS,
-        PATTERN_TYPES,
-        TRUST_SCORE_THRESHOLDS,
-        SELECTORS,
-        TIME_CONSTANTS,
-        UI_CONSTANTS,
-        ANALYSIS_CONSTANTS,
-        ERROR_MESSAGES,
-        SUCCESS_MESSAGES,
-    };
+    window.MRA_CONSTANTS = MRA_CONSTANTS;
 }

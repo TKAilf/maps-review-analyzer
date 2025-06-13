@@ -1,4 +1,4 @@
-// src/background/message-handler.js
+// src/background/message-handler.js (修正版)
 
 /**
  * メッセージ処理を管理するクラス
@@ -31,6 +31,7 @@ class MessageHandler {
             EXPORT_DATA: this.handleExportData.bind(this),
             IMPORT_DATA: this.handleImportData.bind(this),
             CHECK_INTEGRITY: this.handleCheckIntegrity.bind(this),
+            GET_DEBUG_INFO: this.handleGetDebugInfo.bind(this),
         };
     }
 
@@ -45,9 +46,28 @@ class MessageHandler {
         try {
             console.log("Background received message:", message.type, message);
 
+            // メッセージの基本検証
+            if (!this.validateMessage(message)) {
+                sendResponse({
+                    success: false,
+                    error: "Invalid message format",
+                });
+                return false;
+            }
+
+            // 送信者の検証
+            if (!this.validateSender(sender)) {
+                sendResponse({
+                    success: false,
+                    error: "Invalid sender",
+                });
+                return false;
+            }
+
             const handler = this.messageHandlers[message.type];
 
             if (!handler) {
+                console.warn(`Unknown message type: ${message.type}`);
                 sendResponse({
                     success: false,
                     error: `Unknown message type: ${message.type}`,
@@ -57,6 +77,7 @@ class MessageHandler {
 
             // ハンドラーを実行
             const result = await handler(message, sender);
+            console.log("Message handled successfully:", message.type, result);
             sendResponse(result);
         } catch (error) {
             console.error("Message handling error:", error);
@@ -83,6 +104,7 @@ class MessageHandler {
                 data,
             };
         } catch (error) {
+            console.error("Failed to get settings:", error);
             return {
                 success: false,
                 error: error.message,
@@ -102,9 +124,12 @@ class MessageHandler {
                 throw new Error("No data provided for storage update");
             }
 
+            console.log("Processing storage update with data:", message.data);
+
             const updatedData = await this.storageManager.updateSettings(
                 message.data
             );
+            console.log("Storage update completed:", updatedData);
 
             // 他のタブに設定変更を通知
             this.notifySettingsChange(sender, updatedData);
@@ -114,6 +139,7 @@ class MessageHandler {
                 data: updatedData,
             };
         } catch (error) {
+            console.error("Failed to update storage data:", error);
             return {
                 success: false,
                 error: error.message,
@@ -142,6 +168,7 @@ class MessageHandler {
                 success: true,
             };
         } catch (error) {
+            console.error("Failed to save analysis result:", error);
             return {
                 success: false,
                 error: error.message,
@@ -165,6 +192,7 @@ class MessageHandler {
                 data,
             };
         } catch (error) {
+            console.error("Failed to get analysis history:", error);
             return {
                 success: false,
                 error: error.message,
@@ -189,6 +217,7 @@ class MessageHandler {
                 success: true,
             };
         } catch (error) {
+            console.error("Failed to clear analysis history:", error);
             return {
                 success: false,
                 error: error.message,
@@ -211,6 +240,7 @@ class MessageHandler {
                 data: usage,
             };
         } catch (error) {
+            console.error("Failed to get storage usage:", error);
             return {
                 success: false,
                 error: error.message,
@@ -233,6 +263,7 @@ class MessageHandler {
                 data: exportData,
             };
         } catch (error) {
+            console.error("Failed to export data:", error);
             return {
                 success: false,
                 error: error.message,
@@ -261,6 +292,7 @@ class MessageHandler {
                 success: true,
             };
         } catch (error) {
+            console.error("Failed to import data:", error);
             return {
                 success: false,
                 error: error.message,
@@ -283,6 +315,30 @@ class MessageHandler {
                 data: result,
             };
         } catch (error) {
+            console.error("Failed to check integrity:", error);
+            return {
+                success: false,
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * デバッグ情報取得処理
+     * @param {Object} message - メッセージ
+     * @param {Object} sender - 送信者
+     * @returns {Promise<Object>} - レスポンス
+     */
+    async handleGetDebugInfo(message, sender) {
+        try {
+            const debugInfo = await this.storageManager.getDebugInfo();
+
+            return {
+                success: true,
+                data: debugInfo,
+            };
+        } catch (error) {
+            console.error("Failed to get debug info:", error);
             return {
                 success: false,
                 error: error.message,
@@ -298,7 +354,10 @@ class MessageHandler {
     async notifySettingsChange(sender, updatedData) {
         try {
             const tabs = await chrome.tabs.query({
-                url: "https://www.google.com/maps/*",
+                url: [
+                    "https://www.google.com/maps/*",
+                    "https://maps.google.com/*",
+                ],
             });
 
             tabs.forEach((tab) => {
@@ -369,7 +428,10 @@ class MessageHandler {
     async notifyDataImported(sender) {
         try {
             const tabs = await chrome.tabs.query({
-                url: "https://www.google.com/maps/*",
+                url: [
+                    "https://www.google.com/maps/*",
+                    "https://maps.google.com/*",
+                ],
             });
 
             tabs.forEach((tab) => {
@@ -405,10 +467,12 @@ class MessageHandler {
      */
     validateMessage(message) {
         if (!message || typeof message !== "object") {
+            console.warn("Invalid message: not an object");
             return false;
         }
 
         if (!message.type || typeof message.type !== "string") {
+            console.warn("Invalid message: missing or invalid type");
             return false;
         }
 
@@ -423,20 +487,73 @@ class MessageHandler {
     validateSender(sender) {
         // 基本的な送信者チェック
         if (!sender) {
+            console.warn("Invalid sender: null or undefined");
             return false;
         }
 
         // コンテンツスクリプトからの場合はURLチェック
         if (sender.tab && sender.tab.url) {
-            const allowedDomains = ["google.com", "maps.google.com"];
-            const url = new URL(sender.tab.url);
-            return allowedDomains.some((domain) =>
-                url.hostname.includes(domain)
-            );
+            try {
+                const url = new URL(sender.tab.url);
+                const allowedDomains = ["google.com", "maps.google.com"];
+                const isAllowed = allowedDomains.some((domain) =>
+                    url.hostname.includes(domain)
+                );
+
+                if (!isAllowed) {
+                    console.warn(
+                        "Invalid sender: domain not allowed",
+                        url.hostname
+                    );
+                    return false;
+                }
+            } catch (error) {
+                console.warn("Invalid sender: malformed URL", sender.tab.url);
+                return false;
+            }
         }
 
         // ポップアップやサービスワーカーからの場合は許可
         return true;
+    }
+
+    /**
+     * エラーハンドリング用のヘルパー
+     * @param {Error} error - エラーオブジェクト
+     * @returns {Object} 構造化されたエラー情報
+     */
+    handleError(error) {
+        const errorInfo = {
+            message: error.message,
+            type: "message_handler_error",
+            timestamp: new Date().toISOString(),
+            stack: error.stack,
+        };
+
+        // エラータイプに応じた分類
+        if (error.message.includes("storage")) {
+            errorInfo.type = "storage_error";
+        } else if (error.message.includes("permission")) {
+            errorInfo.type = "permission_error";
+        } else if (error.message.includes("timeout")) {
+            errorInfo.type = "timeout_error";
+        }
+
+        return errorInfo;
+    }
+
+    /**
+     * デバッグ情報を取得
+     * @returns {Object} デバッグ情報
+     */
+    getDebugInfo() {
+        return {
+            handlersCount: Object.keys(this.messageHandlers).length,
+            supportedMessageTypes: Object.keys(this.messageHandlers),
+            timestamp: new Date().toISOString(),
+            constants: this.constants ? "loaded" : "missing",
+            storageManager: this.storageManager ? "available" : "missing",
+        };
     }
 }
 
