@@ -16,6 +16,7 @@
         {
             "matches": ["https://www.google.com/maps/*"],
             "js": ["content.js"],
+            "css": ["src/styles/content.css"],
             "run_at": "document_end"
         }
     ],
@@ -36,5 +37,18 @@
         "32": "icons/icon32.png",
         "48": "icons/icon48.png",
         "128": "icons/icon128.png"
-    }
+    },
+
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "src/shared/*.js",
+                "src/content/**/*.js",
+                "src/popup/**/*.js",
+                "src/background/*.js",
+                "src/styles/*.css"
+            ],
+            "matches": ["https://www.google.com/*"]
+        }
+    ]
 }

@@ -1,0 +1,396 @@
+/* src/styles/content.css
+
+/* 基本コンテナ */
+#review-trust-score {
+    background: white !important;
+    border: 2px solid #1976d2 !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
+    margin: 8px 0 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    font-family: Roboto, Arial, sans-serif !important;
+    position: relative !important;
+    z-index: 10000 !important;
+    max-width: 400px !important;
+    box-sizing: border-box !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    color: #333 !important;
+}
+
+/* スコア表示部分 */
+#review-trust-score .score-display {
+    display: flex !important;
+    align-items: center !important;
+    margin-bottom: 8px !important;
+}
+
+#review-trust-score .score-circle {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    color: white !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: bold !important;
+    font-size: 14px !important;
+    margin-right: 12px !important;
+    flex-shrink: 0 !important;
+}
+
+#review-trust-score .score-info {
+    flex: 1 !important;
+}
+
+#review-trust-score .score-title {
+    font-weight: 500 !important;
+    color: #333 !important;
+    font-size: 14px !important;
+    margin: 0 !important;
+}
+
+#review-trust-score .score-description {
+    font-size: 12px !important;
+    color: #666 !important;
+    margin: 2px 0 0 0 !important;
+}
+
+/* 詳細分析結果 */
+#review-trust-score .analysis-details {
+    margin-top: 8px !important;
+    padding: 8px !important;
+    background: #f5f5f5 !important;
+    border-radius: 4px !important;
+}
+
+#review-trust-score .analysis-title {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: #333 !important;
+    margin: 0 0 4px 0 !important;
+}
+
+#review-trust-score .pattern-item {
+    font-size: 12px !important;
+    margin: 4px 0 !important;
+    color: #666 !important;
+    display: flex !important;
+    align-items: flex-start !important;
+}
+
+#review-trust-score .pattern-icon {
+    margin-right: 4px !important;
+    flex-shrink: 0 !important;
+}
+
+#review-trust-score .pattern-description {
+    flex: 1 !important;
+}
+
+/* ポジティブメッセージ */
+#review-trust-score .positive-message {
+    font-size: 12px !important;
+    color: #4caf50 !important;
+    margin-top: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+#review-trust-score .positive-message::before {
+    content: "✓" !important;
+    margin-right: 6px !important;
+    font-weight: bold !important;
+}
+
+/* 免責事項 */
+#review-trust-score .disclaimer {
+    font-size: 11px !important;
+    color: #999 !important;
+    margin-top: 8px !important;
+    padding-top: 8px !important;
+    border-top: 1px solid #eee !important;
+    text-align: center !important;
+}
+
+/* データ不足メッセージ */
+#review-trust-score.insufficient-data {
+    background: #fff3cd !important;
+    border-color: #ffc107 !important;
+}
+
+#review-trust-score.insufficient-data .message-display {
+    display: flex !important;
+    align-items: center !important;
+}
+
+#review-trust-score.insufficient-data .message-icon {
+    font-size: 20px !important;
+    margin-right: 8px !important;
+    flex-shrink: 0 !important;
+}
+
+#review-trust-score.insufficient-data .message-content {
+    flex: 1 !important;
+}
+
+#review-trust-score.insufficient-data .message-title {
+    font-weight: 500 !important;
+    color: #856404 !important;
+    font-size: 14px !important;
+    margin: 0 !important;
+}
+
+#review-trust-score.insufficient-data .message-text {
+    font-size: 12px !important;
+    color: #856404 !important;
+    margin: 2px 0 0 0 !important;
+}
+
+/* エラーメッセージ */
+#review-trust-score.error {
+    background: #ffebee !important;
+    border-color: #f44336 !important;
+}
+
+#review-trust-score.error .message-title {
+    color: #c62828 !important;
+}
+
+#review-trust-score.error .message-text {
+    color: #c62828 !important;
+}
+
+/* 信頼度レベル別の色設定 */
+.trust-level-high {
+    background: #4caf50 !important;
+}
+
+.trust-level-medium {
+    background: #ff9800 !important;
+}
+
+.trust-level-low {
+    background: #f44336 !important;
+}
+
+.trust-level-very-low {
+    background: #9c27b0 !important;
+}
+
+/* アニメーション */
+#review-trust-score {
+    animation: mra-fade-in 0.3s ease-out !important;
+}
+
+@keyframes mra-fade-in {
+    from {
+        opacity: 0 !important;
+        transform: translateY(-10px) !important;
+    }
+    to {
+        opacity: 1 !important;
+        transform: translateY(0) !important;
+    }
+}
+
+/* ローディング状態 */
+#review-trust-score.loading {
+    opacity: 0.7 !important;
+}
+
+#review-trust-score.loading::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 20px !important;
+    height: 20px !important;
+    margin: -10px 0 0 -10px !important;
+    border: 2px solid #f3f3f3 !important;
+    border-top: 2px solid #1976d2 !important;
+    border-radius: 50% !important;
+    animation: mra-spin 1s linear infinite !important;
+}
+
+@keyframes mra-spin {
+    0% {
+        transform: rotate(0deg) !important;
+    }
+    100% {
+        transform: rotate(360deg) !important;
+    }
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    #review-trust-score {
+        max-width: calc(100vw - 32px) !important;
+        margin: 8px 16px !important;
+    }
+
+    #review-trust-score .score-circle {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 12px !important;
+    }
+
+    #review-trust-score .score-title {
+        font-size: 13px !important;
+    }
+
+    #review-trust-score .score-description {
+        font-size: 11px !important;
+    }
+}
+
+/* ダークモード対応（Google Mapsのダークテーマ） */
+@media (prefers-color-scheme: dark) {
+    #review-trust-score {
+        background: #2d2d2d !important;
+        border-color: #64b5f6 !important;
+        color: #e0e0e0 !important;
+    }
+
+    #review-trust-score .score-title {
+        color: #e0e0e0 !important;
+    }
+
+    #review-trust-score .score-description {
+        color: #bdbdbd !important;
+    }
+
+    #review-trust-score .analysis-details {
+        background: #424242 !important;
+    }
+
+    #review-trust-score .analysis-title {
+        color: #e0e0e0 !important;
+    }
+
+    #review-trust-score .pattern-item {
+        color: #bdbdbd !important;
+    }
+
+    #review-trust-score .disclaimer {
+        color: #9e9e9e !important;
+        border-top-color: #555 !important;
+    }
+
+    /* データ不足メッセージ（ダークモード） */
+    #review-trust-score.insufficient-data {
+        background: #3e2723 !important;
+        border-color: #ffb74d !important;
+    }
+
+    #review-trust-score.insufficient-data .message-title {
+        color: #ffb74d !important;
+    }
+
+    #review-trust-score.insufficient-data .message-text {
+        color: #ffb74d !important;
+    }
+
+    /* エラーメッセージ（ダークモード） */
+    #review-trust-score.error {
+        background: #3f1a1a !important;
+        border-color: #f48fb1 !important;
+    }
+
+    #review-trust-score.error .message-title {
+        color: #f48fb1 !important;
+    }
+
+    #review-trust-score.error .message-text {
+        color: #f48fb1 !important;
+    }
+}
+
+/* Google Mapsの既存スタイルとの競合回避 */
+#review-trust-score * {
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+#review-trust-score,
+#review-trust-score * {
+    font-family: Roboto, Arial, sans-serif !important;
+}
+
+/* 高コントラストモード対応 */
+@media (prefers-contrast: high) {
+    #review-trust-score {
+        border-width: 3px !important;
+    }
+
+    #review-trust-score .score-circle {
+        border: 2px solid currentColor !important;
+    }
+}
+
+/* 視覚的な区切り線 */
+#review-trust-score .divider {
+    height: 1px !important;
+    background: #eee !important;
+    margin: 8px 0 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    #review-trust-score .divider {
+        background: #555 !important;
+    }
+}
+
+/* 詳細情報の展開・折りたたみ */
+#review-trust-score .expandable {
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+#review-trust-score .expandable:hover {
+    background: rgba(0, 0, 0, 0.05) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    #review-trust-score .expandable:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+}
+
+#review-trust-score .expandable.collapsed .analysis-details {
+    display: none !important;
+}
+
+#review-trust-score .expand-icon {
+    transition: transform 0.2s ease !important;
+    font-size: 12px !important;
+    margin-left: 4px !important;
+}
+
+#review-trust-score .expandable.collapsed .expand-icon {
+    transform: rotate(-90deg) !important;
+}
+
+/* アクセシビリティ対応 */
+#review-trust-score[role="alert"] {
+    /* スクリーンリーダー用 */
+}
+
+#review-trust-score .sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* フォーカス表示 */
+#review-trust-score .expandable:focus {
+    outline: 2px solid #1976d2 !important;
+    outline-offset: 2px !important;
+}

@@ -1,165 +1,152 @@
-// popup.js - ポップアップのJavaScript
+// popup.js
 
-class PopupController {
+/**
+ * ポップアップメインクラス
+ */
+class PopupMain {
     constructor() {
-        this.currentSettings = {};
+        this.controllers = {};
+        this.components = {};
         this.init();
     }
 
+    /**
+     * 初期化処理
+     */
     async init() {
-        await this.loadSettings();
-        this.setupEventListeners();
-        await this.loadAnalysisHistory();
+        try {
+            // 共通モジュールの初期化確認
+            this.verifyModules();
+
+            // コントローラーの初期化
+            this.initializeControllers();
+
+            // コンポーネントの初期化
+            this.initializeComponents();
+
+            // イベントリスナーの設定
+            this.setupEventListeners();
+
+            // 初期データの読み込み
+            await this.loadInitialData();
+
+            console.log("Popup initialized successfully");
+        } catch (error) {
+            console.error("Failed to initialize popup:", error);
+            this.showError("初期化に失敗しました: " + error.message);
+        }
     }
 
+    /**
+     * 必要なモジュールが読み込まれているかチェック
+     */
+    verifyModules() {
+        const requiredModules = [
+            "MRA_CONSTANTS",
+            "MRA_CONFIG",
+            "SettingsController",
+            "HistoryController",
+            "UIController",
+        ];
+
+        const missingModules = requiredModules.filter(
+            (module) => !window[module]
+        );
+
+        if (missingModules.length > 0) {
+            throw new Error(
+                `Required modules not loaded: ${missingModules.join(", ")}`
+            );
+        }
+    }
+
+    /**
+     * コントローラーの初期化
+     */
+    initializeControllers() {
+        this.controllers.settings = new window.SettingsController();
+        this.controllers.history = new window.HistoryController();
+        this.controllers.ui = new window.UIController();
+    }
+
+    /**
+     * コンポーネントの初期化
+     */
+    initializeComponents() {
+        this.components.statusDisplay = new window.StatusDisplay(
+            document.getElementById("statusIndicator"),
+            document.getElementById("statusText")
+        );
+
+        this.components.settingsPanel = new window.SettingsPanel();
+        this.components.historyList = new window.HistoryList(
+            document.getElementById("historyList")
+        );
+    }
+
+    /**
+     * イベントリスナーの設定
+     */
     setupEventListeners() {
         // ボタンイベント
-        document
-            .getElementById("toggleBtn")
-            .addEventListener("click", () => this.toggleExtension());
-        document
-            .getElementById("saveBtn")
-            .addEventListener("click", () => this.saveSettings());
-        document
-            .getElementById("analyzeBtn")
-            .addEventListener("click", () => this.requestManualAnalysis());
+        document.getElementById("toggleBtn")?.addEventListener("click", () => {
+            this.controllers.settings.toggleExtension();
+        });
+
+        document.getElementById("saveBtn")?.addEventListener("click", () => {
+            this.controllers.settings.saveSettings();
+        });
+
+        document.getElementById("analyzeBtn")?.addEventListener("click", () => {
+            this.requestManualAnalysis();
+        });
 
         // 設定変更イベント
-        document
-            .getElementById("analysisMode")
-            .addEventListener("change", () => this.onSettingChange());
-        document
-            .getElementById("showDetailedAnalysis")
-            .addEventListener("change", () => this.onSettingChange());
-        document
-            .getElementById("minimumReviews")
-            .addEventListener("input", () => this.onSettingChange());
-        document
-            .getElementById("suspicionThreshold")
-            .addEventListener("input", () => this.onSettingChange());
-    }
+        const settingElements = [
+            "analysisMode",
+            "showDetailedAnalysis",
+            "minimumReviews",
+            "suspicionThreshold",
+        ];
 
-    async loadSettings() {
-        try {
-            this.showLoading(true);
-
-            const response = await this.sendMessage({ type: "GET_SETTINGS" });
-
-            if (response.success) {
-                this.currentSettings = response.data;
-                this.updateUI();
-            } else {
-                throw new Error(response.error);
+        settingElements.forEach((id) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener("change", () => {
+                    this.controllers.settings.onSettingChange(
+                        id,
+                        element.value || element.checked
+                    );
+                });
             }
-        } catch (error) {
-            this.showError("設定の読み込みに失敗しました: " + error.message);
-        } finally {
-            this.showLoading(false);
-        }
+        });
+
+        // キーボードショートカット
+        document.addEventListener("keydown", (event) => {
+            this.handleKeyboardShortcuts(event);
+        });
     }
 
-    updateUI() {
-        const isEnabled = this.currentSettings.isEnabled ?? true;
-        const settings = this.currentSettings.settings || {};
+    /**
+     * 初期データの読み込み
+     */
+    async loadInitialData() {
+        // 設定の読み込み
+        await this.controllers.settings.loadSettings();
 
-        // ステータス表示
-        const statusIndicator = document.getElementById("statusIndicator");
-        const statusText = document.getElementById("statusText");
-        const toggleBtn = document.getElementById("toggleBtn");
+        // 履歴の読み込み
+        await this.controllers.history.loadHistory();
 
-        statusIndicator.className = `status-indicator ${
-            isEnabled ? "enabled" : "disabled"
-        }`;
-        statusText.textContent = isEnabled ? "有効" : "無効";
-        toggleBtn.textContent = isEnabled ? "無効にする" : "有効にする";
-        toggleBtn.disabled = false;
-
-        // 設定値の反映
-        document.getElementById("analysisMode").value =
-            settings.analysisMode || "standard";
-        document.getElementById("showDetailedAnalysis").checked =
-            settings.showDetailedAnalysis ?? true;
-        document.getElementById("minimumReviews").value =
-            settings.minimumReviewsForAnalysis || 5;
-        document.getElementById("suspicionThreshold").value =
-            settings.suspicionThreshold || 40;
+        // UIの更新
+        this.controllers.ui.updateDisplay();
     }
 
-    async toggleExtension() {
-        try {
-            this.showLoading(true);
-            const toggleBtn = document.getElementById("toggleBtn");
-            toggleBtn.disabled = true;
-
-            const newStatus = !this.currentSettings.isEnabled;
-
-            const response = await this.sendMessage({
-                type: "SET_STORAGE_DATA",
-                data: { isEnabled: newStatus },
-            });
-
-            if (response.success) {
-                this.currentSettings.isEnabled = newStatus;
-                this.updateUI();
-                this.showSuccess(
-                    newStatus
-                        ? "拡張機能を有効にしました"
-                        : "拡張機能を無効にしました"
-                );
-            } else {
-                throw new Error(response.error);
-            }
-        } catch (error) {
-            this.showError("切り替えに失敗しました: " + error.message);
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    async saveSettings() {
-        try {
-            this.showLoading(true);
-            this.hideMessages();
-
-            const newSettings = {
-                ...this.currentSettings,
-                settings: {
-                    analysisMode: document.getElementById("analysisMode").value,
-                    showDetailedAnalysis: document.getElementById(
-                        "showDetailedAnalysis"
-                    ).checked,
-                    minimumReviewsForAnalysis: parseInt(
-                        document.getElementById("minimumReviews").value,
-                        10
-                    ),
-                    suspicionThreshold: parseInt(
-                        document.getElementById("suspicionThreshold").value,
-                        10
-                    ),
-                },
-            };
-
-            const response = await this.sendMessage({
-                type: "SET_STORAGE_DATA",
-                data: newSettings,
-            });
-
-            if (response.success) {
-                this.currentSettings = newSettings;
-                this.showSuccess("設定を保存しました");
-            } else {
-                throw new Error(response.error);
-            }
-        } catch (error) {
-            this.showError("設定の保存に失敗しました: " + error.message);
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
+    /**
+     * 手動分析の実行要求
+     */
     async requestManualAnalysis() {
         try {
-            this.showLoading(true);
+            this.controllers.ui.showLoading(true);
 
             // アクティブタブを取得
             const [tab] = await chrome.tabs.query({
@@ -173,156 +160,71 @@ class PopupController {
 
             // Content scriptに手動分析を要求
             await chrome.tabs.sendMessage(tab.id, {
-                type: "MANUAL_ANALYSIS_REQUEST",
+                type: window.MRA_CONSTANTS.MESSAGE_TYPES
+                    .MANUAL_ANALYSIS_REQUEST,
             });
 
-            this.showSuccess("分析を開始しました");
+            this.controllers.ui.showSuccess("分析を開始しました");
 
             // 少し待ってから履歴を更新
             setTimeout(() => {
-                this.loadAnalysisHistory();
+                this.controllers.history.loadHistory();
             }, 2000);
         } catch (error) {
-            this.showError("分析の実行に失敗しました: " + error.message);
+            console.error("Manual analysis failed:", error);
+            this.controllers.ui.showError(
+                "分析の実行に失敗しました: " + error.message
+            );
         } finally {
-            this.showLoading(false);
+            this.controllers.ui.showLoading(false);
         }
     }
 
-    async loadAnalysisHistory() {
-        try {
-            const response = await this.sendMessage({
-                type: "GET_ANALYSIS_HISTORY",
-            });
-
-            if (response.success) {
-                this.displayAnalysisHistory(response.data);
-            }
-        } catch (error) {
-            console.error("Failed to load analysis history:", error);
+    /**
+     * キーボードショートカットの処理
+     * @param {KeyboardEvent} event - キーボードイベント
+     */
+    handleKeyboardShortcuts(event) {
+        if (event.key === "Escape") {
+            window.close();
+        } else if (event.ctrlKey && event.key === "s") {
+            event.preventDefault();
+            this.controllers.settings.saveSettings();
+        } else if (event.ctrlKey && event.key === "r") {
+            event.preventDefault();
+            this.requestManualAnalysis();
         }
     }
 
-    displayAnalysisHistory(history) {
-        const historyList = document.getElementById("historyList");
-
-        if (!history || history.length === 0) {
-            historyList.innerHTML =
-                '<div class="empty-history">履歴はまだありません</div>';
-            return;
-        }
-
-        const historyHTML = history
-            .slice(0, 5)
-            .map((item) => {
-                const date = new Date(item.timestamp).toLocaleString("ja-JP", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                });
-
-                const scoreColor = this.getScoreColor(item.trustScore);
-
-                return `
-        <div class="history-item">
-          <div class="place-name">${this.escapeHtml(item.placeName)}</div>
-          <div class="score">
-            <span class="date">${date}</span>
-            <span class="score-value" style="background: ${scoreColor}">
-              ${Math.round(item.trustScore)}
-            </span>
-          </div>
-        </div>
-      `;
-            })
-            .join("");
-
-        historyList.innerHTML = historyHTML;
-    }
-
-    getScoreColor(score) {
-        if (score >= 80) return "#4caf50";
-        if (score >= 60) return "#ff9800";
-        if (score >= 40) return "#f44336";
-        return "#9c27b0";
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement("div");
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    onSettingChange() {
-        // 設定が変更されたことを視覚的に示す
-        const saveBtn = document.getElementById("saveBtn");
-        saveBtn.style.background = "#FF9800";
-        saveBtn.textContent = "保存 (未保存)";
-
-        setTimeout(() => {
-            saveBtn.style.background = "#2196F3";
-            saveBtn.textContent = "設定保存";
-        }, 3000);
-    }
-
-    sendMessage(message) {
-        return new Promise((resolve, reject) => {
-            chrome.runtime.sendMessage(message, (response) => {
-                if (chrome.runtime.lastError) {
-                    reject(chrome.runtime.lastError);
-                } else {
-                    resolve(response);
-                }
-            });
-        });
-    }
-
-    showLoading(show) {
-        document.getElementById("loading").style.display = show
-            ? "block"
-            : "none";
-    }
-
+    /**
+     * エラー表示
+     * @param {string} message - エラーメッセージ
+     */
     showError(message) {
-        const errorElement = document.getElementById("errorMessage");
-        errorElement.textContent = message;
-        errorElement.style.display = "block";
-
-        // 5秒後に自動で隠す
-        setTimeout(() => {
-            errorElement.style.display = "none";
-        }, 5000);
+        this.controllers.ui.showError(message);
     }
 
-    showSuccess(message) {
-        const successElement = document.getElementById("successMessage");
-        successElement.textContent = message;
-        successElement.style.display = "block";
-
-        // 3秒後に自動で隠す
-        setTimeout(() => {
-            successElement.style.display = "none";
-        }, 3000);
-    }
-
-    hideMessages() {
-        document.getElementById("errorMessage").style.display = "none";
-        document.getElementById("successMessage").style.display = "none";
+    /**
+     * クリーンアップ処理
+     */
+    destroy() {
+        // イベントリスナーの削除など
+        Object.values(this.controllers).forEach((controller) => {
+            if (controller.destroy) {
+                controller.destroy();
+            }
+        });
     }
 }
 
 // ポップアップ初期化
 document.addEventListener("DOMContentLoaded", () => {
-    new PopupController();
+    window.popupMain = new PopupMain();
 });
 
-// キーボードショートカット
-document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-        window.close();
-    } else if (event.ctrlKey && event.key === "s") {
-        event.preventDefault();
-        document.getElementById("saveBtn").click();
+// ページ離脱時のクリーンアップ
+window.addEventListener("beforeunload", () => {
+    if (window.popupMain) {
+        window.popupMain.destroy();
     }
 });
