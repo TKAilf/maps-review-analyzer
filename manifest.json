@@ -6,7 +6,10 @@
 
     "permissions": ["storage", "activeTab"],
 
-    "host_permissions": ["https://www.google.com/*"],
+    "host_permissions": [
+        "https://www.google.com/*",
+        "https://maps.google.com/*"
+    ],
 
     "background": {
         "service_worker": "background.js"
@@ -14,7 +17,10 @@
 
     "content_scripts": [
         {
-            "matches": ["https://www.google.com/maps/*"],
+            "matches": [
+                "https://www.google.com/maps/*",
+                "https://maps.google.com/*"
+            ],
             "js": ["content.js"],
             "css": ["src/styles/content.css"],
             "run_at": "document_end"
@@ -48,7 +54,7 @@
                 "src/background/*.js",
                 "src/styles/*.css"
             ],
-            "matches": ["https://www.google.com/*"]
+            "matches": ["https://www.google.com/*", "https://maps.google.com/*"]
         }
     ]
 }

@@ -1,4 +1,4 @@
-// background.js
+// background.js - Manifest V3対応版
 
 // 必要なモジュールを読み込み
 importScripts(
@@ -22,11 +22,7 @@ class BackgroundService {
      * 初期化処理
      */
     init() {
-        // 拡張機能インストール時の処理
-        chrome.runtime.onInstalled.addListener((details) => {
-            console.log("Maps Review Analyzer installed:", details);
-            this.storageManager.initializeSettings();
-        });
+        console.log("BackgroundService initializing...");
 
         // メッセージ処理の設定
         chrome.runtime.onMessage.addListener(
@@ -49,6 +45,8 @@ class BackgroundService {
         chrome.action.onClicked.addListener((tab) => {
             this.handleActionClick(tab);
         });
+
+        console.log("BackgroundService initialized");
     }
 
     /**
@@ -100,5 +98,26 @@ class BackgroundService {
     }
 }
 
-// サービス初期化
-const backgroundService = new BackgroundService();
+// Service Worker ライフサイクル
+self.addEventListener("install", (event) => {
+    console.log("Service Worker installing...");
+    self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+    console.log("Service Worker activating...");
+    event.waitUntil(
+        (async () => {
+            // サービス初期化
+            const backgroundService = new BackgroundService();
+
+            // 初期設定を行う
+            try {
+                await backgroundService.storageManager.initializeSettings();
+                console.log("Background service fully activated");
+            } catch (error) {
+                console.error("Failed to initialize settings:", error);
+            }
+        })()
+    );
+});
