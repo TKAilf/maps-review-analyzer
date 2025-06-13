@@ -1,352 +1,360 @@
 <!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>レビュー信頼度分析</title>
-    <style>
-      body {
-        width: 350px;
-        min-height: 400px;
-        margin: 0;
-        padding: 16px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          sans-serif;
-        font-size: 14px;
-        background: #f8f9fa;
-      }
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>レビュー信頼度分析</title>
+        <style>
+            body {
+                width: 350px;
+                min-height: 400px;
+                margin: 0;
+                padding: 16px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                    Roboto, sans-serif;
+                font-size: 14px;
+                background: #f8f9fa;
+            }
 
-      .header {
-        text-align: center;
-        margin-bottom: 20px;
-      }
+            .header {
+                text-align: center;
+                margin-bottom: 20px;
+            }
 
-      .header h1 {
-        margin: 0;
-        font-size: 18px;
-        color: #333;
-      }
+            .header h1 {
+                margin: 0;
+                font-size: 18px;
+                color: #333;
+            }
 
-      .header p {
-        margin: 4px 0 0 0;
-        font-size: 12px;
-        color: #666;
-      }
+            .header p {
+                margin: 4px 0 0 0;
+                font-size: 12px;
+                color: #666;
+            }
 
-      .status {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px;
-        background: white;
-        border-radius: 8px;
-        margin-bottom: 16px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
+            .status {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px;
+                background: white;
+                border-radius: 8px;
+                margin-bottom: 16px;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            }
 
-      .status-indicator {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 8px;
-      }
+            .status-indicator {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                margin-right: 8px;
+            }
 
-      .status-indicator.enabled {
-        background: #4caf50;
-      }
+            .status-indicator.enabled {
+                background: #4caf50;
+            }
 
-      .status-indicator.disabled {
-        background: #f44336;
-      }
+            .status-indicator.disabled {
+                background: #f44336;
+            }
 
-      .toggle-btn {
-        background: #2196f3;
-        color: white;
-        border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        transition: background 0.2s;
-      }
+            .toggle-btn {
+                background: #2196f3;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                transition: background 0.2s;
+            }
 
-      .toggle-btn:hover {
-        background: #1976d2;
-      }
+            .toggle-btn:hover {
+                background: #1976d2;
+            }
 
-      .toggle-btn:disabled {
-        background: #9e9e9e;
-        cursor: not-allowed;
-      }
+            .toggle-btn:disabled {
+                background: #9e9e9e;
+                cursor: not-allowed;
+            }
 
-      .settings {
-        background: white;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 16px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
+            .settings {
+                background: white;
+                border-radius: 8px;
+                padding: 16px;
+                margin-bottom: 16px;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            }
 
-      .settings h3 {
-        margin: 0 0 12px 0;
-        font-size: 14px;
-        color: #333;
-      }
+            .settings h3 {
+                margin: 0 0 12px 0;
+                font-size: 14px;
+                color: #333;
+            }
 
-      .setting-group {
-        margin-bottom: 12px;
-      }
+            .setting-group {
+                margin-bottom: 12px;
+            }
 
-      .setting-group:last-child {
-        margin-bottom: 0;
-      }
+            .setting-group:last-child {
+                margin-bottom: 0;
+            }
 
-      .setting-group label {
-        display: block;
-        margin-bottom: 4px;
-        font-size: 12px;
-        font-weight: 500;
-        color: #333;
-      }
+            .setting-group label {
+                display: block;
+                margin-bottom: 4px;
+                font-size: 12px;
+                font-weight: 500;
+                color: #333;
+            }
 
-      .setting-group select,
-      .setting-group input[type="number"] {
-        width: 100%;
-        padding: 6px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 12px;
-        box-sizing: border-box;
-      }
+            .setting-group select,
+            .setting-group input[type="number"] {
+                width: 100%;
+                padding: 6px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 12px;
+                box-sizing: border-box;
+            }
 
-      .checkbox-group {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-      }
+            .checkbox-group {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
 
-      .checkbox-group input[type="checkbox"] {
-        width: auto;
-        margin-right: 8px;
-      }
+            .checkbox-group input[type="checkbox"] {
+                width: auto;
+                margin-right: 8px;
+            }
 
-      .checkbox-group label {
-        margin-bottom: 0;
-        font-size: 12px;
-      }
+            .checkbox-group label {
+                margin-bottom: 0;
+                font-size: 12px;
+            }
 
-      .actions {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 16px;
-      }
+            .actions {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 16px;
+            }
 
-      .btn {
-        flex: 1;
-        padding: 8px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: 500;
-        transition: all 0.2s;
-      }
+            .btn {
+                flex: 1;
+                padding: 8px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 500;
+                transition: all 0.2s;
+            }
 
-      .btn-primary {
-        background: #2196f3;
-        color: white;
-      }
+            .btn-primary {
+                background: #2196f3;
+                color: white;
+            }
 
-      .btn-primary:hover {
-        background: #1976d2;
-      }
+            .btn-primary:hover {
+                background: #1976d2;
+            }
 
-      .btn-secondary {
-        background: #e0e0e0;
-        color: #333;
-      }
+            .btn-secondary {
+                background: #e0e0e0;
+                color: #333;
+            }
 
-      .btn-secondary:hover {
-        background: #d0d0d0;
-      }
+            .btn-secondary:hover {
+                background: #d0d0d0;
+            }
 
-      .history {
-        background: white;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 16px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
+            .history {
+                background: white;
+                border-radius: 8px;
+                padding: 16px;
+                margin-bottom: 16px;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            }
 
-      .history h3 {
-        margin: 0 0 12px 0;
-        font-size: 14px;
-        color: #333;
-      }
+            .history h3 {
+                margin: 0 0 12px 0;
+                font-size: 14px;
+                color: #333;
+            }
 
-      .history-item {
-        padding: 8px;
-        border-bottom: 1px solid #eee;
-        font-size: 12px;
-      }
+            .history-item {
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+                font-size: 12px;
+            }
 
-      .history-item:last-child {
-        border-bottom: none;
-      }
+            .history-item:last-child {
+                border-bottom: none;
+            }
 
-      .history-item .place-name {
-        font-weight: 500;
-        color: #333;
-        margin-bottom: 2px;
-      }
+            .history-item .place-name {
+                font-weight: 500;
+                color: #333;
+                margin-bottom: 2px;
+            }
 
-      .history-item .score {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
+            .history-item .score {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
 
-      .history-item .score-value {
-        padding: 2px 6px;
-        border-radius: 3px;
-        color: white;
-        font-size: 11px;
-        font-weight: bold;
-      }
+            .history-item .score-value {
+                padding: 2px 6px;
+                border-radius: 3px;
+                color: white;
+                font-size: 11px;
+                font-weight: bold;
+            }
 
-      .history-item .date {
-        color: #666;
-        font-size: 11px;
-      }
+            .history-item .date {
+                color: #666;
+                font-size: 11px;
+            }
 
-      .info {
-        background: white;
-        border-radius: 8px;
-        padding: 12px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
+            .info {
+                background: white;
+                border-radius: 8px;
+                padding: 12px;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            }
 
-      .info h3 {
-        margin: 0 0 8px 0;
-        font-size: 14px;
-        color: #333;
-      }
+            .info h3 {
+                margin: 0 0 8px 0;
+                font-size: 14px;
+                color: #333;
+            }
 
-      .info p {
-        margin: 0;
-        font-size: 12px;
-        color: #666;
-        line-height: 1.4;
-      }
+            .info p {
+                margin: 0;
+                font-size: 12px;
+                color: #666;
+                line-height: 1.4;
+            }
 
-      .loading {
-        display: none;
-        text-align: center;
-        padding: 20px;
-        color: #666;
-        font-size: 12px;
-      }
+            .loading {
+                display: none;
+                text-align: center;
+                padding: 20px;
+                color: #666;
+                font-size: 12px;
+            }
 
-      .error {
-        background: #ffebee;
-        color: #c62828;
-        padding: 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        margin-top: 8px;
-        display: none;
-      }
+            .error {
+                background: #ffebee;
+                color: #c62828;
+                padding: 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                margin-top: 8px;
+                display: none;
+            }
 
-      .success {
-        background: #e8f5e8;
-        color: #2e7d32;
-        padding: 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        margin-top: 8px;
-        display: none;
-      }
+            .success {
+                background: #e8f5e8;
+                color: #2e7d32;
+                padding: 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                margin-top: 8px;
+                display: none;
+            }
 
-      .empty-history {
-        text-align: center;
-        color: #999;
-        font-size: 12px;
-        padding: 20px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="header">
-      <h1>レビュー信頼度分析</h1>
-      <p>Google Mapsレビューの信頼性を分析</p>
-    </div>
+            .empty-history {
+                text-align: center;
+                color: #999;
+                font-size: 12px;
+                padding: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>レビュー信頼度分析</h1>
+            <p>Google Mapsレビューの信頼性を分析</p>
+        </div>
 
-    <div class="status">
-      <div style="display: flex; align-items: center">
-        <div class="status-indicator" id="statusIndicator"></div>
-        <span id="statusText">読み込み中...</span>
-      </div>
-      <button class="toggle-btn" id="toggleBtn" disabled>切り替え</button>
-    </div>
+        <div class="status">
+            <div style="display: flex; align-items: center">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">読み込み中...</span>
+            </div>
+            <button class="toggle-btn" id="toggleBtn" disabled>切り替え</button>
+        </div>
 
-    <div class="settings">
-      <h3>分析設定</h3>
+        <div class="settings">
+            <h3>分析設定</h3>
 
-      <div class="setting-group">
-        <label for="analysisMode">分析モード:</label>
-        <select id="analysisMode">
-          <option value="lenient">寛容（偽陽性を抑制）</option>
-          <option value="standard">標準</option>
-          <option value="strict">厳格（疑わしい要素を重視）</option>
-        </select>
-      </div>
+            <div class="setting-group">
+                <label for="analysisMode">分析モード:</label>
+                <select id="analysisMode">
+                    <option value="lenient">寛容（偽陽性を抑制）</option>
+                    <option value="standard">標準</option>
+                    <option value="strict">厳格（疑わしい要素を重視）</option>
+                </select>
+            </div>
 
-      <div class="checkbox-group">
-        <input type="checkbox" id="showDetailedAnalysis" />
-        <label for="showDetailedAnalysis">詳細分析結果を表示</label>
-      </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="showDetailedAnalysis" />
+                <label for="showDetailedAnalysis">詳細分析結果を表示</label>
+            </div>
 
-      <div class="setting-group">
-        <label for="minimumReviews">最小レビュー数:</label>
-        <input type="number" id="minimumReviews" min="1" max="50" value="5" />
-      </div>
+            <div class="setting-group">
+                <label for="minimumReviews">最小レビュー数:</label>
+                <input
+                    type="number"
+                    id="minimumReviews"
+                    min="1"
+                    max="50"
+                    value="5"
+                />
+            </div>
 
-      <div class="setting-group">
-        <label for="suspicionThreshold">疑念閾値 (0-100):</label>
-        <input
-          type="number"
-          id="suspicionThreshold"
-          min="0"
-          max="100"
-          value="40"
-        />
-      </div>
-    </div>
+            <div class="setting-group">
+                <label for="suspicionThreshold">疑念閾値 (0-100):</label>
+                <input
+                    type="number"
+                    id="suspicionThreshold"
+                    min="0"
+                    max="100"
+                    value="40"
+                />
+            </div>
+        </div>
 
-    <div class="actions">
-      <button class="btn btn-primary" id="saveBtn">設定保存</button>
-      <button class="btn btn-secondary" id="analyzeBtn">手動分析</button>
-    </div>
+        <div class="actions">
+            <button class="btn btn-primary" id="saveBtn">設定保存</button>
+            <button class="btn btn-secondary" id="analyzeBtn">手動分析</button>
+        </div>
 
-    <div class="error" id="errorMessage"></div>
-    <div class="success" id="successMessage"></div>
-    <div class="loading" id="loading">処理中...</div>
+        <div class="error" id="errorMessage"></div>
+        <div class="success" id="successMessage"></div>
+        <div class="loading" id="loading">処理中...</div>
 
-    <div class="history">
-      <h3>分析履歴</h3>
-      <div id="historyList" class="empty-history">履歴はまだありません</div>
-    </div>
+        <div class="history">
+            <h3>分析履歴</h3>
+            <div id="historyList" class="empty-history">
+                履歴はまだありません
+            </div>
+        </div>
 
-    <div class="info">
-      <h3>使用方法</h3>
-      <p>
-        • Google Mapsの店舗ページでレビューを自動分析<br />
-        • 拡張機能アイコンクリックで手動分析<br />
-        • 疑わしいパターンを検出し信頼度を表示<br />
-        • 分析結果は参考値として利用してください
-      </p>
-    </div>
+        <div class="info">
+            <h3>使用方法</h3>
+            <p>
+                • Google Mapsの店舗ページでレビューを自動分析<br />
+                • 拡張機能アイコンクリックで手動分析<br />
+                • 疑わしいパターンを検出し信頼度を表示<br />
+                • 分析結果は参考値として利用してください
+            </p>
+        </div>
 
-    <script src="popup.js"></script>
-  </body>
+        <script src="popup.js"></script>
+    </body>
 </html>
