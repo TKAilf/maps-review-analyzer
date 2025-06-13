@@ -64,6 +64,31 @@ class MapsReviewAnalyzer {
     }
   }
 
+  /**
+   * Background scriptにメッセージを送信する
+   * @param {Object} message - 送信するメッセージ
+   * @returns {Promise<Object>} - レスポンス
+   */
+  sendMessageToBackground(message) {
+    return new Promise((resolve, reject) => {
+      try {
+        chrome.runtime.sendMessage(message, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else if (!response) {
+            reject(new Error("No response received from background script"));
+          } else if (response.success === false) {
+            reject(new Error(response.error || "Unknown error"));
+          } else {
+            resolve(response);
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   handleMessage(message, sender, sendResponse) {
     switch (message.type) {
       case "PAGE_LOADED":
@@ -86,6 +111,44 @@ class MapsReviewAnalyzer {
       window.location.hostname === "www.google.com" &&
       window.location.pathname.includes("/maps/")
     );
+  }
+
+  /**
+   * ページの変更を監視する
+   */
+  observePageChanges() {
+    const observer = new MutationObserver((mutations) => {
+      let shouldReanalyze = false;
+
+      mutations.forEach((mutation) => {
+        // レビューコンテンツの変更を検出
+        if (mutation.target.closest('[data-review-id]') ||
+            mutation.target.querySelector('[data-review-id]')) {
+          shouldReanalyze = true;
+        }
+        
+        // 店舗情報の変更を検出
+        if (mutation.target.closest('[data-value="Reviews"]') ||
+            mutation.target.querySelector('[data-value="Reviews"]')) {
+          shouldReanalyze = true;
+        }
+      });
+
+      if (shouldReanalyze) {
+        // 連続した変更を防ぐためにデバウンス
+        clearTimeout(this.reanalysisTimeout);
+        this.reanalysisTimeout = setTimeout(() => {
+          this.analyzeReviews();
+        }, 2000);
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    this.observer = observer;
   }
 
   async waitForPageLoad() {
@@ -138,7 +201,7 @@ class MapsReviewAnalyzer {
       this.displayTrustScore();
 
       // 分析結果を保存
-      this.saveAnalysisResult();
+      await this.saveAnalysisResult();
     } catch (error) {
       console.error("Review analysis failed:", error);
       this.displayErrorMessage();
@@ -498,6 +561,27 @@ class MapsReviewAnalyzer {
     this.trustScore = Math.max(10, 100 - maxSuspicion);
   }
 
+  async saveAnalysisResult() {
+    try {
+      const analysisData = {
+        url: window.location.href,
+        placeName: this.placeName,
+        trustScore: this.trustScore,
+        totalReviews: this.reviewData.totalReviews,
+        suspiciousPatterns: this.reviewData.suspiciousPatterns,
+      };
+
+      await this.sendMessageToBackground({
+        type: "SAVE_ANALYSIS_RESULT",
+        data: analysisData,
+      });
+
+      console.log("Analysis result saved successfully");
+    } catch (error) {
+      console.error("Failed to save analysis result:", error);
+    }
+  }
+
   displayTrustScore() {
     this.removeExistingScore();
     const scoreElement = this.createScoreElement();
@@ -526,6 +610,27 @@ class MapsReviewAnalyzer {
     if (insertTarget) {
       insertTarget.appendChild(errorElement);
     }
+  }
+
+  findInsertLocation() {
+    // 複数の挿入位置を試行
+    const selectors = [
+      '[data-value="Reviews"]',
+      '.m6QErb.DxyBCb.kA9KIf.dS8AEf.ecceSd',
+      '.TIHn2',
+      '.m6QErb',
+      '.DxyBCb',
+      '[role="main"]'
+    ];
+
+    for (const selector of selectors) {
+      const element = document.querySelector(selector);
+      if (element) {
+        return element.parentElement || element;
+      }
+    }
+
+    return document.body;
   }
 
   removeExistingScore() {
@@ -642,4 +747,83 @@ class MapsReviewAnalyzer {
 
     return container;
   }
+
+  createErrorElement() {
+    const container = document.createElement("div");
+    container.id = "review-trust-score";
+    container.style.cssText = `
+      background: #ffebee;
+      border: 2px solid #f44336;
+      border-radius: 8px;
+      padding: 12px;
+      margin: 8px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      font-family: Roboto, Arial, sans-serif;
+      position: relative;
+      z-index: 1000;
+      max-width: 400px;
+    `;
+
+    container.innerHTML = `
+      <div style="display: flex; align-items: center;">
+        <div style="font-size: 20px; margin-right: 8px;">❌</div>
+        <div>
+          <div style="font-weight: 500; color: #c62828; font-size: 14px;">分析エラー</div>
+          <div style="font-size: 12px; color: #c62828;">
+            レビューの分析中にエラーが発生しました。
+          </div>
+        </div>
+      </div>
+    `;
+
+    return container;
+  }
+
+  getScoreColor(score) {
+    if (score >= 80) return "#4caf50";
+    if (score >= 60) return "#ff9800";
+    if (score >= 40) return "#f44336";
+    return "#9c27b0";
+  }
+
+  getScoreText(score) {
+    if (score >= 80) return "信頼度が高いです";
+    if (score >= 60) return "概ね信頼できます";
+    if (score >= 40) return "注意が必要です";
+    return "疑わしい要素があります";
+  }
+
+  /**
+   * クリーンアップ処理
+   */
+  destroy() {
+    if (this.observer) {
+      this.observer.disconnect();
+    }
+    
+    if (this.reanalysisTimeout) {
+      clearTimeout(this.reanalysisTimeout);
+    }
+    
+    this.removeExistingScore();
+  }
 }
+
+// インスタンス生成とグローバル参照の保持
+let mapsReviewAnalyzer;
+
+// ページ読み込み完了時に初期化
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    mapsReviewAnalyzer = new MapsReviewAnalyzer();
+  });
+} else {
+  mapsReviewAnalyzer = new MapsReviewAnalyzer();
+}
+
+// ページ離脱時のクリーンアップ
+window.addEventListener('beforeunload', () => {
+  if (mapsReviewAnalyzer) {
+    mapsReviewAnalyzer.destroy();
+  }
+});
