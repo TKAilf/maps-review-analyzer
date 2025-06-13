@@ -25,6 +25,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       handleGetSettings(sendResponse);
       return true;
 
+    case "SET_STORAGE_DATA":
+      handleSetStorageData(message.data, sendResponse);
+      return true;
+
     case "SAVE_ANALYSIS_RESULT":
       handleSaveAnalysisResult(message.data, sendResponse);
       return true;
@@ -44,6 +48,26 @@ async function handleGetSettings(sendResponse) {
     const data = await chrome.storage.sync.get(null);
     sendResponse({ success: true, data });
   } catch (error) {
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
+// 設定保存処理
+async function handleSetStorageData(newData, sendResponse) {
+  try {
+    // 既存の設定を取得
+    const existingData = await chrome.storage.sync.get(null);
+
+    // 新しいデータとマージ
+    const mergedData = { ...existingData, ...newData };
+
+    // ストレージに保存
+    await chrome.storage.sync.set(mergedData);
+
+    console.log("Settings saved:", mergedData);
+    sendResponse({ success: true, data: mergedData });
+  } catch (error) {
+    console.error("Failed to save settings:", error);
     sendResponse({ success: false, error: error.message });
   }
 }
