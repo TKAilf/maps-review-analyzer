@@ -375,6 +375,7 @@
 /* アクセシビリティ対応 */
 #review-trust-score[role="alert"] {
     /* スクリーンリーダー用 */
+    position: relative !important;
 }
 
 #review-trust-score .sr-only {
