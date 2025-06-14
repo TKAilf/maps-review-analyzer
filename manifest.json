@@ -50,7 +50,7 @@
                 "https://maps.google.com.au/*"
             ],
             "js": ["content.js"],
-            "css": ["src/styles/content.css"],
+            "css": ["styles/content.css"],
             "run_at": "document_end"
         }
     ],
@@ -76,11 +76,11 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "src/shared/*.js",
-                "src/content/**/*.js",
-                "src/popup/**/*.js",
-                "src/background/*.js",
-                "src/styles/*.css"
+                "shared/*.js",
+                "content/**/*.js",
+                "popup/**/*.js",
+                "background/*.js",
+                "styles/*.css"
             ],
             "matches": [
                 "https://www.google.com/*",

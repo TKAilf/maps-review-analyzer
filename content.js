@@ -189,16 +189,16 @@ function waitForGoogleMapsContent(maxWaitTime = 15000) {
 
         // 必要なスクリプトを順次読み込み
         const scripts = [
-            "src/shared/constants.js",
-            "src/shared/config.js",
-            "src/content/analyzer/utils/communication.js",
-            "src/content/analyzer/utils/text-utils.js",
-            "src/content/analyzer/data-extractor.js",
-            "src/content/analyzer/pattern-detector.js",
-            "src/content/analyzer/score-calculator.js",
-            "src/content/analyzer/utils/dom-utils.js",
-            "src/content/analyzer/ui/result-renderer.js",
-            "src/content/analyzer/review-analyzer.js",
+            "shared/constants.js", // ルートからの相対パス
+            "shared/config.js",
+            "content/utils/communication.js",
+            "content/utils/text-utils.js",
+            "content/core/data-extractor.js",
+            "content/core/pattern-detector.js",
+            "content/core/score-calculator.js",
+            "content/utils/dom-utils.js",
+            "content/ui/result-renderer.js",
+            "content/core/review-analyzer.js",
         ];
 
         // 順次読み込み（並列ではなく直列で確実に）
