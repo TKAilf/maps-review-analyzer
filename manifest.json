@@ -4,7 +4,7 @@
     "version": "1.0.0",
     "description": "Google Mapsのレビューの信頼性を分析し、サクラレビューの可能性を判定します",
 
-    "permissions": ["storage", "activeTab"],
+    "permissions": ["storage", "activeTab", "tabs"],
 
     "host_permissions": [
         "https://www.google.com/*",
