@@ -1,4 +1,4 @@
-// content.js - 修正版
+// content.js - URL判定修正版
 
 /**
  * スクリプトを非同期で読み込む
@@ -22,16 +22,71 @@ function loadScript(src) {
 }
 
 /**
+ * Google MapsのURLかどうかを判定する（改善版）
+ * @param {string} url - 判定するURL（デフォルトは現在のURL）
+ * @returns {boolean} Google MapsのURLかどうか
+ */
+function isGoogleMapsUrl(url = window.location.href) {
+    if (!url || typeof url !== "string") {
+        return false;
+    }
+
+    try {
+        const urlObj = new URL(url);
+
+        // Google Mapsのドメインパターンをチェック
+        const validDomains = [
+            "www.google.com",
+            "maps.google.com",
+            "google.com",
+            "www.google.co.jp",
+            "maps.google.co.jp",
+            "google.co.jp",
+            "www.google.co.uk",
+            "maps.google.co.uk",
+            "www.google.de",
+            "maps.google.de",
+            "www.google.fr",
+            "maps.google.fr",
+            "www.google.ca",
+            "maps.google.ca",
+            "www.google.com.au",
+            "maps.google.com.au",
+        ];
+
+        const isValidDomain = validDomains.some(
+            (domain) =>
+                urlObj.hostname === domain ||
+                urlObj.hostname.endsWith("." + domain)
+        );
+
+        const isValidPath = urlObj.pathname.includes("/maps");
+
+        console.log("Google Maps URL validation:", {
+            url: url,
+            hostname: urlObj.hostname,
+            pathname: urlObj.pathname,
+            isValidDomain: isValidDomain,
+            isValidPath: isValidPath,
+            result: isValidDomain && isValidPath,
+        });
+
+        return isValidDomain && isValidPath;
+    } catch (error) {
+        console.error("URL parsing error:", error);
+        return false;
+    }
+}
+
+/**
  * モジュールを順次読み込みして初期化
  */
 (async function initializeContentScript() {
     try {
-        // Google Mapsページかチェック
-        if (
-            !window.location.hostname.includes("google.com") ||
-            !window.location.pathname.includes("/maps")
-        ) {
+        // Google Mapsページかチェック（改善版）
+        if (!isGoogleMapsUrl()) {
             console.log("Not a Google Maps page, skipping initialization");
+            console.log("Current URL:", window.location.href);
             return;
         }
 
@@ -42,6 +97,7 @@ function loadScript(src) {
         }
 
         console.log("Initializing Maps Review Analyzer...");
+        console.log("Current URL:", window.location.href);
 
         // 必要なスクリプトを順次読み込み
         const scripts = [
@@ -134,21 +190,5 @@ window.addEventListener("beforeunload", () => {
 window.addEventListener("error", (event) => {
     if (event.error && event.error.message.includes("Maps Review Analyzer")) {
         console.error("Maps Review Analyzer Error:", event.error);
-    }
-});
-
-/**
- * 未処理のPromiseリジェクションをキャッチ
- */
-window.addEventListener("unhandledrejection", (event) => {
-    if (
-        event.reason &&
-        event.reason.message &&
-        event.reason.message.includes("Maps Review Analyzer")
-    ) {
-        console.error(
-            "Unhandled Promise Rejection in Maps Review Analyzer:",
-            event.reason
-        );
     }
 });

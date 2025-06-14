@@ -1,4 +1,4 @@
-// src/shared/config.js - Service Worker対応版
+// src/shared/config.js - Service Worker対応版（URL パターン修正）
 
 /**
  * デフォルト設定値
@@ -67,15 +67,137 @@ const SETTINGS_SCHEMA = {
 };
 
 /**
- * URL パターン設定
+ * URL パターン設定（国際化対応）
  */
 const URL_PATTERNS = {
     GOOGLE_MAPS: [
+        // 主要ドメイン
         "*://www.google.com/maps/*",
         "*://maps.google.com/*",
         "*://google.com/maps/*",
+
+        // 日本
+        "*://www.google.co.jp/maps/*",
+        "*://maps.google.co.jp/*",
+        "*://google.co.jp/maps/*",
+
+        // イギリス
+        "*://www.google.co.uk/maps/*",
+        "*://maps.google.co.uk/*",
+        "*://google.co.uk/maps/*",
+
+        // ドイツ
+        "*://www.google.de/maps/*",
+        "*://maps.google.de/*",
+        "*://google.de/maps/*",
+
+        // フランス
+        "*://www.google.fr/maps/*",
+        "*://maps.google.fr/*",
+        "*://google.fr/maps/*",
+
+        // カナダ
+        "*://www.google.ca/maps/*",
+        "*://maps.google.ca/*",
+        "*://google.ca/maps/*",
+
+        // オーストラリア
+        "*://www.google.com.au/maps/*",
+        "*://maps.google.com.au/*",
+        "*://google.com.au/maps/*",
+
+        // その他の主要国
+        "*://www.google.it/maps/*",
+        "*://maps.google.it/*",
+        "*://www.google.es/maps/*",
+        "*://maps.google.es/*",
+        "*://www.google.nl/maps/*",
+        "*://maps.google.nl/*",
+        "*://www.google.com.br/maps/*",
+        "*://maps.google.com.br/*",
+        "*://www.google.com.mx/maps/*",
+        "*://maps.google.com.mx/*",
+        "*://www.google.ru/maps/*",
+        "*://maps.google.ru/*",
+        "*://www.google.co.in/maps/*",
+        "*://maps.google.co.in/*",
+        "*://www.google.co.kr/maps/*",
+        "*://maps.google.co.kr/*",
+        "*://www.google.com.tw/maps/*",
+        "*://maps.google.com.tw/*",
+        "*://www.google.com.hk/maps/*",
+        "*://maps.google.com.hk/*",
+        "*://www.google.com.sg/maps/*",
+        "*://maps.google.com.sg/*",
     ],
-    EXCLUDE_PATTERNS: ["*://www.google.com/maps/embed/*"],
+
+    EXCLUDE_PATTERNS: [
+        "*://www.google.com/maps/embed/*",
+        "*://maps.google.com/embed/*",
+        "*://www.google.co.jp/maps/embed/*",
+        "*://maps.google.co.jp/embed/*",
+    ],
+
+    /**
+     * ドメインがGoogle Mapsかどうかを判定
+     * @param {string} hostname - ホスト名
+     * @returns {boolean} Google Mapsドメインかどうか
+     */
+    isGoogleMapsDomain(hostname) {
+        if (!hostname) return false;
+
+        const validDomains = [
+            "www.google.com",
+            "maps.google.com",
+            "google.com",
+            "www.google.co.jp",
+            "maps.google.co.jp",
+            "google.co.jp",
+            "www.google.co.uk",
+            "maps.google.co.uk",
+            "google.co.uk",
+            "www.google.de",
+            "maps.google.de",
+            "google.de",
+            "www.google.fr",
+            "maps.google.fr",
+            "google.fr",
+            "www.google.ca",
+            "maps.google.ca",
+            "google.ca",
+            "www.google.com.au",
+            "maps.google.com.au",
+            "google.com.au",
+        ];
+
+        return validDomains.some(
+            (domain) => hostname === domain || hostname.endsWith("." + domain)
+        );
+    },
+
+    /**
+     * URLがGoogle Mapsかどうかを判定
+     * @param {string} url - 判定するURL
+     * @returns {boolean} Google MapsのURLかどうか
+     */
+    isGoogleMapsUrl(url) {
+        if (!url || typeof url !== "string") {
+            return false;
+        }
+
+        try {
+            const urlObj = new URL(url);
+
+            const isValidDomain = this.isGoogleMapsDomain(urlObj.hostname);
+            const isValidPath = urlObj.pathname.includes("/maps");
+            const isNotEmbed = !urlObj.pathname.includes("/maps/embed");
+
+            return isValidDomain && isValidPath && isNotEmbed;
+        } catch (error) {
+            console.error("URL parsing error:", error);
+            return false;
+        }
+    },
 };
 
 /**
@@ -105,7 +227,18 @@ const PERFORMANCE_CONFIG = {
  */
 const I18N_CONFIG = {
     DEFAULT_LOCALE: "ja",
-    SUPPORTED_LOCALES: ["ja", "en"],
+    SUPPORTED_LOCALES: [
+        "ja",
+        "en",
+        "de",
+        "fr",
+        "es",
+        "it",
+        "pt",
+        "ru",
+        "ko",
+        "zh",
+    ],
 
     // 日付パターン（各言語での「最近」を示すパターン）
     RECENT_DATE_PATTERNS: {
@@ -115,6 +248,21 @@ const I18N_CONFIG = {
             /(\d+)\s+weeks?\s+ago/,
             /(\d+)\s+hours?\s+ago/,
             /(\d+)\s+minutes?\s+ago/,
+        ],
+        de: [
+            /vor\s+(\d+)\s+Tagen?/,
+            /vor\s+(\d+)\s+Wochen?/,
+            /vor\s+(\d+)\s+Stunden?/,
+        ],
+        fr: [
+            /il\s+y\s+a\s+(\d+)\s+jours?/,
+            /il\s+y\s+a\s+(\d+)\s+semaines?/,
+            /il\s+y\s+a\s+(\d+)\s+heures?/,
+        ],
+        es: [
+            /hace\s+(\d+)\s+días?/,
+            /hace\s+(\d+)\s+semanas?/,
+            /hace\s+(\d+)\s+horas?/,
         ],
     },
 };
@@ -193,6 +341,8 @@ const SECURITY_CONFIG = {
         "www.google.com",
         "maps.google.com",
         "googleusercontent.com",
+        "www.google.co.jp",
+        "maps.google.co.jp",
     ],
 
     // データ暗号化（将来の機能）

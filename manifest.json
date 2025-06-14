@@ -8,7 +8,21 @@
 
     "host_permissions": [
         "https://www.google.com/*",
-        "https://maps.google.com/*"
+        "https://maps.google.com/*",
+        "https://google.com/*",
+        "https://www.google.co.jp/*",
+        "https://maps.google.co.jp/*",
+        "https://google.co.jp/*",
+        "https://www.google.co.uk/*",
+        "https://maps.google.co.uk/*",
+        "https://www.google.de/*",
+        "https://maps.google.de/*",
+        "https://www.google.fr/*",
+        "https://maps.google.fr/*",
+        "https://www.google.ca/*",
+        "https://maps.google.ca/*",
+        "https://www.google.com.au/*",
+        "https://maps.google.com.au/*"
     ],
 
     "background": {
@@ -19,7 +33,21 @@
         {
             "matches": [
                 "https://www.google.com/maps/*",
-                "https://maps.google.com/*"
+                "https://maps.google.com/*",
+                "https://google.com/maps/*",
+                "https://www.google.co.jp/maps/*",
+                "https://maps.google.co.jp/*",
+                "https://google.co.jp/maps/*",
+                "https://www.google.co.uk/maps/*",
+                "https://maps.google.co.uk/*",
+                "https://www.google.de/maps/*",
+                "https://maps.google.de/*",
+                "https://www.google.fr/maps/*",
+                "https://maps.google.fr/*",
+                "https://www.google.ca/maps/*",
+                "https://maps.google.ca/*",
+                "https://www.google.com.au/maps/*",
+                "https://maps.google.com.au/*"
             ],
             "js": ["content.js"],
             "css": ["src/styles/content.css"],
@@ -54,7 +82,24 @@
                 "src/background/*.js",
                 "src/styles/*.css"
             ],
-            "matches": ["https://www.google.com/*", "https://maps.google.com/*"]
+            "matches": [
+                "https://www.google.com/*",
+                "https://maps.google.com/*",
+                "https://google.com/*",
+                "https://www.google.co.jp/*",
+                "https://maps.google.co.jp/*",
+                "https://google.co.jp/*",
+                "https://www.google.co.uk/*",
+                "https://maps.google.co.uk/*",
+                "https://www.google.de/*",
+                "https://maps.google.de/*",
+                "https://www.google.fr/*",
+                "https://maps.google.fr/*",
+                "https://www.google.ca/*",
+                "https://maps.google.ca/*",
+                "https://www.google.com.au/*",
+                "https://maps.google.com.au/*"
+            ]
         }
     ]
 }

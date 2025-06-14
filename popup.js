@@ -1,4 +1,4 @@
-// popup.js - 完全版
+// popup.js - URL判定修正版
 
 /**
  * ポップアップメインクラス
@@ -159,7 +159,9 @@ class PopupMain {
             // 履歴リストコンポーネント
             const historyList = document.getElementById("historyList");
             if (window.HistoryList && historyList) {
-                this.components.historyList = new window.HistoryList(historyList);
+                this.components.historyList = new window.HistoryList(
+                    historyList
+                );
             }
 
             this.log("Components initialized");
@@ -176,7 +178,9 @@ class PopupMain {
             // 切り替えボタン
             const toggleBtn = document.getElementById("toggleBtn");
             if (toggleBtn) {
-                toggleBtn.addEventListener("click", () => this.toggleExtension());
+                toggleBtn.addEventListener("click", () =>
+                    this.toggleExtension()
+                );
             }
 
             // 保存ボタン
@@ -188,7 +192,9 @@ class PopupMain {
             // 分析ボタン
             const analyzeBtn = document.getElementById("analyzeBtn");
             if (analyzeBtn) {
-                analyzeBtn.addEventListener("click", () => this.requestManualAnalysis());
+                analyzeBtn.addEventListener("click", () =>
+                    this.requestManualAnalysis()
+                );
             }
 
             // 設定変更のリスナー
@@ -196,7 +202,9 @@ class PopupMain {
                 "#analysisMode, #showDetailedAnalysis, #minimumReviews, #suspicionThreshold"
             );
             settingsInputs.forEach((input) => {
-                input.addEventListener("change", () => this.onSettingChange(input));
+                input.addEventListener("change", () =>
+                    this.onSettingChange(input)
+                );
             });
 
             this.log("Event listeners setup completed");
@@ -284,22 +292,29 @@ class PopupMain {
             // 各設定値を更新
             const analysisMode = document.getElementById("analysisMode");
             if (analysisMode) {
-                analysisMode.value = settings.settings?.analysisMode || "standard";
+                analysisMode.value =
+                    settings.settings?.analysisMode || "standard";
             }
 
-            const showDetailedAnalysis = document.getElementById("showDetailedAnalysis");
+            const showDetailedAnalysis = document.getElementById(
+                "showDetailedAnalysis"
+            );
             if (showDetailedAnalysis) {
-                showDetailedAnalysis.checked = settings.settings?.showDetailedAnalysis !== false;
+                showDetailedAnalysis.checked =
+                    settings.settings?.showDetailedAnalysis !== false;
             }
 
             const minimumReviews = document.getElementById("minimumReviews");
             if (minimumReviews) {
-                minimumReviews.value = settings.settings?.minimumReviewsForAnalysis || 5;
+                minimumReviews.value =
+                    settings.settings?.minimumReviewsForAnalysis || 5;
             }
 
-            const suspicionThreshold = document.getElementById("suspicionThreshold");
+            const suspicionThreshold =
+                document.getElementById("suspicionThreshold");
             if (suspicionThreshold) {
-                suspicionThreshold.value = settings.settings?.suspicionThreshold || 40;
+                suspicionThreshold.value =
+                    settings.settings?.suspicionThreshold || 40;
             }
 
             this.log("Settings UI updated");
@@ -325,7 +340,7 @@ class PopupMain {
                     } else {
                         historyContainer.className = "";
                         historyContainer.innerHTML = "";
-                        
+
                         history.forEach((item) => {
                             const element = this.createHistoryElement(item);
                             historyContainer.appendChild(element);
@@ -393,7 +408,9 @@ class PopupMain {
             const statusText = document.getElementById("statusText");
 
             if (statusIndicator) {
-                statusIndicator.className = `status-indicator ${isEnabled ? "enabled" : "disabled"}`;
+                statusIndicator.className = `status-indicator ${
+                    isEnabled ? "enabled" : "disabled"
+                }`;
             }
 
             if (statusText) {
@@ -435,7 +452,9 @@ class PopupMain {
                 this.updateToggleButton(newEnabled);
                 this.updateStatusDisplay(newEnabled);
                 this.showSuccess(
-                    newEnabled ? "拡張機能を有効にしました" : "拡張機能を無効にしました"
+                    newEnabled
+                        ? "拡張機能を有効にしました"
+                        : "拡張機能を無効にしました"
                 );
             } else {
                 throw new Error("Failed to toggle extension");
@@ -455,7 +474,7 @@ class PopupMain {
             this.showLoading(true);
 
             const settingsData = this.collectSettingsFromUI();
-            
+
             const response = await this.sendMessage({
                 type: this.constants.MESSAGE_TYPES.SET_STORAGE_DATA,
                 data: settingsData,
@@ -482,12 +501,77 @@ class PopupMain {
     collectSettingsFromUI() {
         return {
             settings: {
-                analysisMode: document.getElementById("analysisMode")?.value || "standard",
-                showDetailedAnalysis: document.getElementById("showDetailedAnalysis")?.checked !== false,
-                minimumReviewsForAnalysis: parseInt(document.getElementById("minimumReviews")?.value) || 5,
-                suspicionThreshold: parseInt(document.getElementById("suspicionThreshold")?.value) || 40,
+                analysisMode:
+                    document.getElementById("analysisMode")?.value ||
+                    "standard",
+                showDetailedAnalysis:
+                    document.getElementById("showDetailedAnalysis")?.checked !==
+                    false,
+                minimumReviewsForAnalysis:
+                    parseInt(
+                        document.getElementById("minimumReviews")?.value
+                    ) || 5,
+                suspicionThreshold:
+                    parseInt(
+                        document.getElementById("suspicionThreshold")?.value
+                    ) || 40,
             },
         };
+    }
+
+    /**
+     * Google MapsのURLかどうかを判定する（改善版）
+     * @param {string} url - 判定するURL
+     * @returns {boolean} Google MapsのURLかどうか
+     */
+    isGoogleMapsUrl(url) {
+        if (!url || typeof url !== "string") {
+            return false;
+        }
+
+        try {
+            const urlObj = new URL(url);
+
+            // Google Mapsのドメインパターンをチェック
+            const validDomains = [
+                "www.google.com",
+                "maps.google.com",
+                "google.com",
+                "www.google.co.jp",
+                "maps.google.co.jp",
+                "google.co.jp",
+                // その他の国別ドメイン
+                "www.google.co.uk",
+                "maps.google.co.uk",
+                "www.google.de",
+                "maps.google.de",
+                "www.google.fr",
+                "maps.google.fr",
+                // 一般的なパターン
+            ];
+
+            const isValidDomain = validDomains.some(
+                (domain) =>
+                    urlObj.hostname === domain ||
+                    urlObj.hostname.endsWith("." + domain)
+            );
+
+            const isValidPath = urlObj.pathname.includes("/maps");
+
+            this.log("URL validation:", {
+                url: url,
+                hostname: urlObj.hostname,
+                pathname: urlObj.pathname,
+                isValidDomain: isValidDomain,
+                isValidPath: isValidPath,
+                result: isValidDomain && isValidPath,
+            });
+
+            return isValidDomain && isValidPath;
+        } catch (error) {
+            this.error("URL parsing error:", error);
+            return false;
+        }
     }
 
     /**
@@ -496,9 +580,20 @@ class PopupMain {
     async requestManualAnalysis() {
         try {
             // アクティブタブを取得
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            
-            if (!tab || !tab.url || !tab.url.includes("google.com/maps")) {
+            const [tab] = await chrome.tabs.query({
+                active: true,
+                currentWindow: true,
+            });
+
+            if (!tab || !tab.url) {
+                this.showError("アクティブなタブが見つかりません");
+                return;
+            }
+
+            this.log("Current tab URL:", tab.url);
+
+            // URLが Google Maps かどうかを判定
+            if (!this.isGoogleMapsUrl(tab.url)) {
                 this.showError("Google Mapsページで実行してください");
                 return;
             }
@@ -517,11 +612,22 @@ class PopupMain {
             setTimeout(() => {
                 this.loadHistory();
             }, 2000);
-
         } catch (error) {
             this.hideLoading();
             this.error("Failed to request manual analysis:", error);
-            this.showError("分析の実行に失敗しました");
+
+            // エラーメッセージを詳細化
+            let errorMessage = "分析の実行に失敗しました";
+            if (error.message.includes("Could not establish connection")) {
+                errorMessage =
+                    "ページの読み込みが完了していません。少し待ってから再試行してください";
+            } else if (
+                error.message.includes("Extension context invalidated")
+            ) {
+                errorMessage = "拡張機能の再読み込みが必要です";
+            }
+
+            this.showError(errorMessage);
         }
     }
 
@@ -533,7 +639,7 @@ class PopupMain {
             const { id, value, checked, type } = input;
             const finalValue = type === "checkbox" ? checked : value;
             this.log(`Setting ${id} changed to:`, finalValue);
-            
+
             // リアルタイム設定反映は実装しない（保存ボタンでのみ反映）
         } catch (error) {
             this.error("Setting change error:", error);
@@ -549,7 +655,11 @@ class PopupMain {
 
             const timeoutId = setTimeout(() => {
                 console.error("Message timeout:", message.type);
-                reject(new Error(`Message timeout after ${timeout}ms for ${message.type}`));
+                reject(
+                    new Error(
+                        `Message timeout after ${timeout}ms for ${message.type}`
+                    )
+                );
             }, timeout);
 
             try {
@@ -559,13 +669,19 @@ class PopupMain {
                     console.log("Received response:", response);
 
                     if (chrome.runtime.lastError) {
-                        console.error("Chrome runtime error:", chrome.runtime.lastError);
+                        console.error(
+                            "Chrome runtime error:",
+                            chrome.runtime.lastError
+                        );
                         reject(new Error(chrome.runtime.lastError.message));
                         return;
                     }
 
                     if (!response) {
-                        console.error("No response received for:", message.type);
+                        console.error(
+                            "No response received for:",
+                            message.type
+                        );
                         reject(new Error("No response received"));
                         return;
                     }
