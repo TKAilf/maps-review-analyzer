@@ -4,24 +4,33 @@
 let MRA_CONSTANTS, MRA_CONFIG, StorageManager, MessageHandler;
 
 // 必要なモジュールを読み込み
-importScripts(
-    "src/shared/constants.js",
-    "src/shared/config.js",
-    "src/background/storage-manager.js",
-    "src/background/message-handler.js"
-);
+try {
+    importScripts(
+        "src/shared/constants.js",
+        "src/shared/config.js",
+        "src/background/storage-manager.js",
+        "src/background/message-handler.js"
+    );
 
-// Service Worker内でグローバル変数を初期化
-MRA_CONSTANTS = self.MRA_CONSTANTS;
-MRA_CONFIG = self.MRA_CONFIG;
-StorageManager = self.StorageManager;
-MessageHandler = self.MessageHandler;
+    // Service Worker内でグローバル変数を初期化
+    MRA_CONSTANTS = self.MRA_CONSTANTS;
+    MRA_CONFIG = self.MRA_CONFIG;
+    StorageManager = self.StorageManager;
+    MessageHandler = self.MessageHandler;
+} catch (error) {
+    console.error("Failed to load background scripts:", error);
+}
 
 /**
  * メイン背景処理クラス
  */
 class BackgroundService {
     constructor() {
+        if (!StorageManager || !MessageHandler) {
+            console.error("Required classes not loaded");
+            return;
+        }
+
         this.storageManager = new StorageManager();
         this.messageHandler = new MessageHandler(this.storageManager);
         this.init();
@@ -36,12 +45,15 @@ class BackgroundService {
         // メッセージ処理の設定
         chrome.runtime.onMessage.addListener(
             (message, sender, sendResponse) => {
-                this.messageHandler.handleMessage(
-                    message,
-                    sender,
-                    sendResponse
-                );
-                return true; // 非同期レスポンスを示す
+                if (this.messageHandler) {
+                    this.messageHandler.handleMessage(
+                        message,
+                        sender,
+                        sendResponse
+                    );
+                    return true; // 非同期レスポンスを示す
+                }
+                return false;
             }
         );
 
@@ -75,7 +87,9 @@ class BackgroundService {
             // Content scriptに分析開始を通知
             chrome.tabs
                 .sendMessage(tabId, {
-                    type: MRA_CONSTANTS.MESSAGE_TYPES.PAGE_LOADED,
+                    type:
+                        MRA_CONSTANTS?.MESSAGE_TYPES?.PAGE_LOADED ||
+                        "PAGE_LOADED",
                     data: { url: tab.url },
                 })
                 .catch((error) => {
@@ -97,7 +111,9 @@ class BackgroundService {
             try {
                 // Content scriptに手動分析を指示
                 await chrome.tabs.sendMessage(tab.id, {
-                    type: MRA_CONSTANTS.MESSAGE_TYPES.MANUAL_ANALYSIS_REQUEST,
+                    type:
+                        MRA_CONSTANTS?.MESSAGE_TYPES?.MANUAL_ANALYSIS_REQUEST ||
+                        "MANUAL_ANALYSIS_REQUEST",
                 });
             } catch (error) {
                 console.error("Failed to send manual analysis request:", error);
@@ -105,6 +121,9 @@ class BackgroundService {
         }
     }
 }
+
+// 拡張機能レベルでのグローバル変数
+let backgroundService = null;
 
 // Service Worker ライフサイクル
 self.addEventListener("install", (event) => {
@@ -116,13 +135,17 @@ self.addEventListener("activate", (event) => {
     console.log("Service Worker activating...");
     event.waitUntil(
         (async () => {
-            // サービス初期化
-            const backgroundService = new BackgroundService();
-
-            // 初期設定を行う
             try {
-                await backgroundService.storageManager.initializeSettings();
-                console.log("Background service fully activated");
+                // サービス初期化
+                backgroundService = new BackgroundService();
+
+                // 初期設定を行う
+                if (backgroundService && backgroundService.storageManager) {
+                    await backgroundService.storageManager.initializeSettings();
+                    console.log("Background service fully activated");
+                } else {
+                    console.error("Failed to initialize BackgroundService");
+                }
             } catch (error) {
                 console.error("Failed to initialize settings:", error);
             }

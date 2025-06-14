@@ -17,7 +17,7 @@ function loadScript(src) {
             console.error(`Failed to load: ${src}`, error);
             reject(error);
         };
-        document.head.appendChild(script);
+        (document.head || document.documentElement).appendChild(script);
     });
 }
 
@@ -29,7 +29,7 @@ function loadScript(src) {
         // Google Mapsページかチェック
         if (
             !window.location.hostname.includes("google.com") ||
-            !window.location.pathname.includes("/maps/")
+            !window.location.pathname.includes("/maps")
         ) {
             console.log("Not a Google Maps page, skipping initialization");
             return;
@@ -47,13 +47,13 @@ function loadScript(src) {
         const scripts = [
             "src/shared/constants.js",
             "src/shared/config.js",
-            "src/content/utils/communication.js",
-            "src/content/utils/text-utils.js",
+            "src/content/analyzer/utils/communication.js",
+            "src/content/analyzer/utils/text-utils.js",
             "src/content/analyzer/data-extractor.js",
             "src/content/analyzer/pattern-detector.js",
             "src/content/analyzer/score-calculator.js",
-            "src/content/ui/dom-utils.js",
-            "src/content/ui/result-renderer.js",
+            "src/content/analyzer/utils/dom-utils.js",
+            "src/content/analyzer/ui/result-renderer.js",
             "src/content/analyzer/review-analyzer.js",
         ];
 
@@ -61,7 +61,7 @@ function loadScript(src) {
         for (const script of scripts) {
             await loadScript(script);
             // 小さな遅延を追加してブラウザに処理時間を与える
-            await new Promise((resolve) => setTimeout(resolve, 10));
+            await new Promise((resolve) => setTimeout(resolve, 50));
         }
 
         // 依存関係をチェック
@@ -86,15 +86,17 @@ function loadScript(src) {
         // ページが完全に読み込まれるまで待機
         if (document.readyState === "loading") {
             await new Promise((resolve) => {
-                document.addEventListener("DOMContentLoaded", resolve);
+                document.addEventListener("DOMContentLoaded", resolve, {
+                    once: true,
+                });
             });
         }
 
         // さらに少し待機（Google Mapsの動的コンテンツのため）
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
 
         // メインアナライザーを初期化
-        window.mapsReviewAnalyzer = new ReviewAnalyzer();
+        window.mapsReviewAnalyzer = new window.ReviewAnalyzer();
 
         console.log("Maps Review Analyzer initialized successfully");
     } catch (error) {

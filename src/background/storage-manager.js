@@ -8,6 +8,70 @@ class StorageManager {
         // Service Worker環境でも動作するように修正
         this.config = self.MRA_CONFIG || globalThis.MRA_CONFIG;
         this.constants = self.MRA_CONSTANTS || globalThis.MRA_CONSTANTS;
+
+        // 設定が読み込まれていない場合のフォールバック
+        if (!this.config || !this.constants) {
+            console.warn("Config or Constants not loaded, using fallback");
+            this.initializeFallbackConfig();
+        }
+    }
+
+    /**
+     * フォールバック設定を初期化
+     */
+    initializeFallbackConfig() {
+        this.config = {
+            DEFAULT_SETTINGS: {
+                isEnabled: true,
+                settings: {
+                    analysisMode: "standard",
+                    showDetailedAnalysis: true,
+                    minimumReviewsForAnalysis: 5,
+                    suspicionThreshold: 40,
+                    autoAnalysis: true,
+                    debugMode: false,
+                },
+            },
+            CONFIG_UTILS: {
+                mergeSettings: (current, updates) => {
+                    const merged = JSON.parse(JSON.stringify(current));
+                    if (updates.isEnabled !== undefined) {
+                        merged.isEnabled = updates.isEnabled;
+                    }
+                    if (
+                        updates.settings &&
+                        typeof updates.settings === "object"
+                    ) {
+                        Object.assign(merged.settings, updates.settings);
+                    }
+                    return merged;
+                },
+            },
+            CONFIG_VALIDATORS: {
+                validateSettings: (settings) => {
+                    if (!settings || typeof settings !== "object") {
+                        return {
+                            valid: false,
+                            errors: [],
+                            settings: this.config.DEFAULT_SETTINGS,
+                        };
+                    }
+                    return { valid: true, errors: [], settings };
+                },
+            },
+            ANALYSIS_CONSTANTS: {
+                MAX_HISTORY_ITEMS: 20,
+            },
+        };
+
+        this.constants = {
+            MESSAGE_TYPES: {
+                GET_SETTINGS: "GET_SETTINGS",
+                SET_STORAGE_DATA: "SET_STORAGE_DATA",
+                SAVE_ANALYSIS_RESULT: "SAVE_ANALYSIS_RESULT",
+                GET_ANALYSIS_HISTORY: "GET_ANALYSIS_HISTORY",
+            },
+        };
     }
 
     /**
@@ -44,6 +108,12 @@ class StorageManager {
     async getSettings() {
         try {
             const data = await chrome.storage.sync.get(null);
+
+            // データが空の場合はデフォルト設定を返す
+            if (!data || Object.keys(data).length === 0) {
+                return this.config.DEFAULT_SETTINGS;
+            }
+
             const validation =
                 this.config.CONFIG_VALIDATORS.validateSettings(data);
 
@@ -120,7 +190,8 @@ class StorageManager {
             }
 
             // 最大保持件数の制限
-            const maxItems = this.config.ANALYSIS_CONSTANTS.MAX_HISTORY_ITEMS;
+            const maxItems =
+                this.config.ANALYSIS_CONSTANTS?.MAX_HISTORY_ITEMS || 20;
             if (analysisHistory.length > maxItems) {
                 analysisHistory.splice(maxItems);
             }
@@ -352,6 +423,19 @@ class StorageManager {
                 lastCheck: new Date().toISOString(),
             };
         }
+    }
+
+    /**
+     * デバッグ情報を取得
+     * @returns {Object} デバッグ情報
+     */
+    async getDebugInfo() {
+        return {
+            configLoaded: !!this.config,
+            constantsLoaded: !!this.constants,
+            timestamp: new Date().toISOString(),
+            storageUsage: await this.getStorageUsage().catch(() => null),
+        };
     }
 }
 
