@@ -1,4 +1,4 @@
-// src/content/analyzer/review-analyzer.js
+// src/content/analyzer/review-analyzer.js - 改善版（ページ準備状況チェック対応）
 
 /**
  * メインのレビュー分析クラス
@@ -50,15 +50,82 @@ class ReviewAnalyzer {
                 this.settings.autoAnalysis ??
                 true;
             if (autoAnalysis) {
-                // 少し待ってから分析を開始（ページの読み込み完了を待つ）
+                // ページの準備ができるまで待ってから分析を開始
                 this.analysisTimeout = setTimeout(() => {
-                    this.performAnalysis();
-                }, 2000);
+                    this.performAnalysisIfReady();
+                }, 3000);
             }
 
             console.log("ReviewAnalyzer initialized successfully");
         } catch (error) {
             console.error("ReviewAnalyzer initialization failed:", error);
+        }
+    }
+
+    /**
+     * ページの準備ができている場合のみ分析を実行
+     */
+    async performAnalysisIfReady() {
+        try {
+            const isReady = await this.checkPageReadiness();
+            if (isReady) {
+                console.log("Page is ready, performing analysis");
+                await this.performAnalysis();
+            } else {
+                console.log("Page not ready, skipping auto analysis");
+            }
+        } catch (error) {
+            console.error("Error in performAnalysisIfReady:", error);
+        }
+    }
+
+    /**
+     * ページの準備状況をチェック
+     * @returns {Promise<boolean>} ページが準備できているかどうか
+     */
+    async checkPageReadiness() {
+        try {
+            console.log("Checking page readiness...");
+
+            // 基本的な要素の存在チェック
+            const basicElementsExist =
+                document.querySelector('[role="main"]') &&
+                (document.querySelector("h1") ||
+                    document.querySelector('[data-value="Reviews"]'));
+
+            if (!basicElementsExist) {
+                console.log("Basic elements not found");
+                return false;
+            }
+
+            // データ抽出器を使って実際にデータが取得できるかテスト
+            try {
+                const placeName = this.dataExtractor.extractPlaceName();
+                if (!placeName || placeName === "不明な場所") {
+                    console.log("Place name not available");
+                    return false;
+                }
+
+                const totalReviews = this.dataExtractor.extractTotalReviews();
+                const ratings = this.dataExtractor.extractRatings();
+                const hasReviewData =
+                    totalReviews > 0 ||
+                    Object.values(ratings).some((count) => count > 0);
+
+                if (!hasReviewData) {
+                    console.log("No review data available yet");
+                    return false;
+                }
+
+                console.log("Page readiness check passed");
+                return true;
+            } catch (error) {
+                console.log("Data extraction test failed:", error);
+                return false;
+            }
+        } catch (error) {
+            console.error("Error checking page readiness:", error);
+            return false;
         }
     }
 
@@ -91,8 +158,8 @@ class ReviewAnalyzer {
                         this.constants.MESSAGE_TYPES.MANUAL_ANALYSIS_REQUEST
                     ) {
                         console.log("Manual analysis requested");
-                        this.performAnalysis();
-                        sendResponse({ success: true });
+                        this.handleManualAnalysisRequest(sendResponse);
+                        return true; // 非同期レスポンスを示す
                     } else if (
                         message.type ===
                         this.constants.MESSAGE_TYPES.PAGE_LOADED
@@ -104,7 +171,10 @@ class ReviewAnalyzer {
                             this.settings.autoAnalysis ??
                             true
                         ) {
-                            setTimeout(() => this.performAnalysis(), 1000);
+                            setTimeout(
+                                () => this.performAnalysisIfReady(),
+                                2000
+                            );
                         }
                         sendResponse({ success: true });
                     } else if (message.type === "SETTINGS_UPDATED") {
@@ -112,6 +182,10 @@ class ReviewAnalyzer {
                         this.settings = message.data;
                         this.updateComponents();
                         sendResponse({ success: true });
+                    } else if (message.type === "CHECK_PAGE_READINESS") {
+                        console.log("Page readiness check requested");
+                        this.handlePageReadinessCheck(sendResponse);
+                        return true; // 非同期レスポンスを示す
                     }
                 } catch (error) {
                     console.error("Error handling message:", error);
@@ -121,6 +195,51 @@ class ReviewAnalyzer {
                 return true; // 非同期レスポンスを示す
             }
         );
+    }
+
+    /**
+     * 手動分析要求を処理
+     * @param {Function} sendResponse - レスポンス関数
+     */
+    async handleManualAnalysisRequest(sendResponse) {
+        try {
+            console.log("Processing manual analysis request");
+
+            // ページの準備状況をチェック
+            const isReady = await this.checkPageReadiness();
+            if (!isReady) {
+                sendResponse({
+                    success: false,
+                    error: "ページの読み込みが完了していません",
+                });
+                return;
+            }
+
+            // 分析を実行
+            await this.performAnalysis();
+
+            sendResponse({ success: true });
+        } catch (error) {
+            console.error("Manual analysis failed:", error);
+            sendResponse({
+                success: false,
+                error: "分析中にエラーが発生しました: " + error.message,
+            });
+        }
+    }
+
+    /**
+     * ページ準備状況チェック要求を処理
+     * @param {Function} sendResponse - レスポンス関数
+     */
+    async handlePageReadinessCheck(sendResponse) {
+        try {
+            const isReady = await this.checkPageReadiness();
+            sendResponse({ ready: isReady });
+        } catch (error) {
+            console.error("Page readiness check failed:", error);
+            sendResponse({ ready: false });
+        }
     }
 
     /**
@@ -141,7 +260,7 @@ class ReviewAnalyzer {
     }
 
     /**
-     * 分析を実行
+     * 分析を実行（改善版）
      */
     async performAnalysis() {
         if (this.isAnalyzing) {
@@ -152,6 +271,17 @@ class ReviewAnalyzer {
         try {
             this.isAnalyzing = true;
             console.log("Starting analysis...");
+
+            // ページの準備状況を再確認
+            const isReady = await this.checkPageReadiness();
+            if (!isReady) {
+                console.log("Page not ready for analysis");
+                this.resultRenderer.displayError(
+                    "ページの読み込みが完了していません。少し待ってから再試行してください。",
+                    "この場所"
+                );
+                return;
+            }
 
             // データ抽出
             const reviewData = await this.dataExtractor.extractReviewData();
@@ -236,9 +366,18 @@ class ReviewAnalyzer {
     /**
      * 手動で分析を再実行
      */
-    reanalyze() {
+    async reanalyze() {
         console.log("Manual reanalysis triggered");
-        this.performAnalysis();
+
+        // 現在の分析を停止
+        if (this.analysisTimeout) {
+            clearTimeout(this.analysisTimeout);
+            this.analysisTimeout = null;
+        }
+
+        // 少し待ってから分析を実行
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await this.performAnalysis();
     }
 
     /**
@@ -286,6 +425,22 @@ class ReviewAnalyzer {
             isDisplayed: this.resultRenderer
                 ? this.resultRenderer.isDisplayed()
                 : false,
+        };
+    }
+
+    /**
+     * デバッグ情報を取得
+     * @returns {Object} デバッグ情報
+     */
+    getDebugInfo() {
+        return {
+            status: this.getStatus(),
+            settings: this.settings,
+            pageReadiness: this.checkPageReadiness(),
+            extractorDebug: this.dataExtractor
+                ? this.dataExtractor.getDebugInfo()
+                : null,
+            timestamp: new Date().toISOString(),
         };
     }
 }

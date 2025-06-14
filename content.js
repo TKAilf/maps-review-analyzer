@@ -1,4 +1,4 @@
-// content.js - URL判定修正版
+// content.js - URL判定修正版（動的コンテンツ検知改善）
 
 /**
  * スクリプトを非同期で読み込む
@@ -79,6 +79,94 @@ function isGoogleMapsUrl(url = window.location.href) {
 }
 
 /**
+ * Google Mapsの動的コンテンツが読み込まれているかチェック
+ * @returns {boolean} 動的コンテンツが読み込まれているかどうか
+ */
+function isGoogleMapsContentLoaded() {
+    // 複数の条件をチェックして、実際にマップコンテンツが読み込まれているか確認
+    const conditions = [
+        // 基本的なページ構造
+        () => document.querySelector('[role="main"]'),
+        () =>
+            document.querySelector("h1") ||
+            document.querySelector('[data-value="Reviews"]'),
+
+        // より具体的なGoogle Maps要素
+        () =>
+            document.querySelector('[data-attrid="title"]') ||
+            document.querySelector(".DUwDvf") ||
+            document.querySelector('[aria-label*="reviews"]'),
+
+        // マップ自体の存在
+        () =>
+            document.querySelector('[role="region"]') ||
+            document.querySelector('[data-value="Directions"]') ||
+            document.querySelector('[data-value="Save"]'),
+
+        // レビュー関連要素（オプショナル）
+        () =>
+            document.querySelector("[data-review-id]") ||
+            document.querySelector(".jftiEf") ||
+            document.querySelector('[aria-label*="stars"]') ||
+            true, // レビューがない場合もあるので、この条件は常にtrue
+    ];
+
+    const results = conditions.map((condition, index) => {
+        const result = condition();
+        console.log(`Content check ${index + 1}:`, !!result);
+        return !!result;
+    });
+
+    // 最初の4つの条件のうち少なくとも3つが満たされていればOK
+    const essentialChecks = results.slice(0, 4);
+    const passedEssentialChecks = essentialChecks.filter(Boolean).length;
+
+    const isLoaded = passedEssentialChecks >= 3;
+    console.log(
+        `Google Maps content loaded check: ${passedEssentialChecks}/4 essential checks passed, result: ${isLoaded}`
+    );
+
+    return isLoaded;
+}
+
+/**
+ * Google Mapsコンテンツの読み込み完了を待機
+ * @param {number} maxWaitTime - 最大待機時間（ミリ秒）
+ * @returns {Promise<boolean>} 読み込み完了のPromise
+ */
+function waitForGoogleMapsContent(maxWaitTime = 15000) {
+    return new Promise((resolve) => {
+        const startTime = Date.now();
+        const checkInterval = 500;
+
+        const checkContent = () => {
+            console.log("Checking Google Maps content...");
+
+            if (isGoogleMapsContentLoaded()) {
+                console.log("Google Maps content detected!");
+                resolve(true);
+                return;
+            }
+
+            const elapsedTime = Date.now() - startTime;
+            if (elapsedTime >= maxWaitTime) {
+                console.log("Timeout waiting for Google Maps content");
+                resolve(false);
+                return;
+            }
+
+            console.log(
+                `Still waiting for content... (${elapsedTime}ms elapsed)`
+            );
+            setTimeout(checkContent, checkInterval);
+        };
+
+        // 即座にチェックを開始
+        checkContent();
+    });
+}
+
+/**
  * モジュールを順次読み込みして初期化
  */
 (async function initializeContentScript() {
@@ -148,8 +236,15 @@ function isGoogleMapsUrl(url = window.location.href) {
             });
         }
 
-        // さらに少し待機（Google Mapsの動的コンテンツのため）
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        // Google Mapsの動的コンテンツが読み込まれるまで待機
+        console.log("Waiting for Google Maps content to load...");
+        const contentLoaded = await waitForGoogleMapsContent(15000);
+
+        if (!contentLoaded) {
+            console.warn(
+                "Google Maps content may not be fully loaded, but proceeding with initialization"
+            );
+        }
 
         // メインアナライザーを初期化
         window.mapsReviewAnalyzer = new window.ReviewAnalyzer();
@@ -191,4 +286,28 @@ window.addEventListener("error", (event) => {
     if (event.error && event.error.message.includes("Maps Review Analyzer")) {
         console.error("Maps Review Analyzer Error:", event.error);
     }
+});
+
+/**
+ * ページの変更を監視（SPAの場合）
+ */
+let lastUrl = window.location.href;
+const urlObserver = new MutationObserver(() => {
+    if (window.location.href !== lastUrl) {
+        lastUrl = window.location.href;
+        console.log("URL changed to:", lastUrl);
+
+        // Google Mapsページの場合は再初期化
+        if (isGoogleMapsUrl() && !window.mapsReviewAnalyzer) {
+            setTimeout(() => {
+                console.log("Reinitializing due to URL change...");
+                initializeContentScript();
+            }, 2000);
+        }
+    }
+});
+
+urlObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
 });

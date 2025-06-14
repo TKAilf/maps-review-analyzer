@@ -1,4 +1,4 @@
-// popup.js - URL判定修正版
+// popup.js - URL判定修正版（通信エラー対応）
 
 /**
  * ポップアップメインクラス
@@ -575,7 +575,30 @@ class PopupMain {
     }
 
     /**
-     * 手動分析を要求
+     * Google Mapsコンテンツが読み込まれているかチェック
+     * @param {chrome.tabs.Tab} tab - チェックするタブ
+     * @returns {Promise<boolean>} コンテンツが読み込まれているかどうか
+     */
+    async checkGoogleMapsContentLoaded(tab) {
+        try {
+            // コンテンツスクリプトにページの状態を問い合わせ
+            const response = await chrome.tabs.sendMessage(tab.id, {
+                type: "CHECK_PAGE_READINESS",
+            });
+
+            return response && response.ready;
+        } catch (error) {
+            // コンテンツスクリプトが応答しない場合は読み込み中と判断
+            this.log(
+                "Content script not responding, assuming loading:",
+                error.message
+            );
+            return false;
+        }
+    }
+
+    /**
+     * 手動分析を要求（改善版）
      */
     async requestManualAnalysis() {
         try {
@@ -600,35 +623,100 @@ class PopupMain {
 
             this.showLoading(true);
 
-            // コンテンツスクリプトに分析要求を送信
-            await chrome.tabs.sendMessage(tab.id, {
-                type: this.constants.MESSAGE_TYPES.MANUAL_ANALYSIS_REQUEST,
-            });
+            // まずGoogle Mapsのコンテンツが読み込まれているかチェック
+            const contentLoaded = await this.checkGoogleMapsContentLoaded(tab);
+
+            if (!contentLoaded) {
+                this.hideLoading();
+                this.showError(
+                    "ページの読み込みが完了していません。ページが完全に表示されてから再試行してください"
+                );
+                return;
+            }
+
+            // コンテンツスクリプトに分析要求を送信（リトライ機能付き）
+            const analysisResult = await this.sendMessageToTab(
+                tab.id,
+                {
+                    type: this.constants.MESSAGE_TYPES.MANUAL_ANALYSIS_REQUEST,
+                },
+                3
+            ); // 最大3回リトライ
 
             this.hideLoading();
-            this.showSuccess("分析を開始しました");
 
-            // 少し待ってから履歴を更新
-            setTimeout(() => {
-                this.loadHistory();
-            }, 2000);
+            if (analysisResult && analysisResult.success) {
+                this.showSuccess("分析を開始しました");
+
+                // 少し待ってから履歴を更新
+                setTimeout(() => {
+                    this.loadHistory();
+                }, 2000);
+            } else {
+                throw new Error(
+                    analysisResult?.error || "分析の開始に失敗しました"
+                );
+            }
         } catch (error) {
             this.hideLoading();
             this.error("Failed to request manual analysis:", error);
 
             // エラーメッセージを詳細化
             let errorMessage = "分析の実行に失敗しました";
+
             if (error.message.includes("Could not establish connection")) {
                 errorMessage =
-                    "ページの読み込みが完了していません。少し待ってから再試行してください";
+                    "ページの読み込みが完了していません。ページが完全に表示されてから再試行してください";
             } else if (
                 error.message.includes("Extension context invalidated")
             ) {
-                errorMessage = "拡張機能の再読み込みが必要です";
+                errorMessage =
+                    "拡張機能の再読み込みが必要です。ページを更新してから再試行してください";
+            } else if (error.message.includes("No response")) {
+                errorMessage =
+                    "ページの準備ができていません。少し待ってから再試行してください";
+            } else if (error.message.includes("Timeout")) {
+                errorMessage =
+                    "応答がタイムアウトしました。ページを更新してから再試行してください";
             }
 
             this.showError(errorMessage);
         }
+    }
+
+    /**
+     * タブにメッセージを送信（リトライ機能付き）
+     * @param {number} tabId - タブID
+     * @param {Object} message - 送信するメッセージ
+     * @param {number} maxRetries - 最大リトライ回数
+     * @returns {Promise<Object>} レスポンス
+     */
+    async sendMessageToTab(tabId, message, maxRetries = 1) {
+        let lastError;
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                if (attempt > 0) {
+                    this.log(`Retry attempt ${attempt + 1}/${maxRetries}`);
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, 1000 * attempt)
+                    );
+                }
+
+                const response = await chrome.tabs.sendMessage(tabId, message);
+                return response;
+            } catch (error) {
+                lastError = error;
+                this.log(`Attempt ${attempt + 1} failed:`, error.message);
+
+                // 致命的なエラーの場合はリトライしない
+                if (error.message.includes("Extension context invalidated")) {
+                    break;
+                }
+            }
+        }
+
+        throw lastError;
     }
 
     /**
@@ -647,7 +735,7 @@ class PopupMain {
     }
 
     /**
-     * Background scriptにメッセージを送信
+     * Background scriptにメッセージを送信（改善版）
      */
     async sendMessage(message, timeout = 10000) {
         return new Promise((resolve, reject) => {
